@@ -120,26 +120,39 @@ Unix socket, one JSON object per line — enough to drive a focus session from
 outside the app. That is what the [Quickshell bar
 widget](quickshell/README.md) talks to.
 
-**3 — A shutdown log, and a signal handler behind it**
+**3 — Naming the password store**
 
-The app forgets the login across a reboot. Supabase rotates the refresh token
-on every refresh and the new one only reaches `session.bin` when the app writes
-it, so a process killed between the two leaves a token Supabase has already
-spent: the next start presents it, is told `Already Used`, and the app wipes the
-session and asks for the e-mail again — its own auth log calls this the *zombie*
-state.
+Without this the app forgets the login every time it closes.
 
-Being killed mid-rotation was the obvious suspect, since nothing asks a Windows
-tray app to stop while on Linux everything does. It is not what happens here:
-the shim writes `linux-shutdown.log` in `userData`, and a `SIGTERM` reaches
-`will-quit` and `exit 0` with the handler below never firing — Electron already
-stops cleanly on a signal. The handler stays as a floor under that behaviour,
-not as a fix for it.
+Chromium picks its password store from `XDG_CURRENT_DESKTOP`. On Hyprland — on
+any compositor it has not heard of — it recognises nothing, and
+`safeStorage.isEncryptionAvailable()` comes back `false`. The app takes that at
+its word:
 
-The log records each start with whether `session.bin` survived, which is the
-one fact that has to be read before the app gets a chance to wipe it. The
-question it leaves open is what the *start* does with a session that was stored
-by a clean stop; `PROMETHEE_DEBUG=1` (below) answers that side.
+```
+[auth] writeStoredSession: safeStorage unavailable, cannot persist
+[auth] Session NOT saved (getAccessToken rotated)
+```
+
+`session.bin` is never written at all. The login lives in memory and dies with
+the process, so quitting the app logs you out — and every restart is a fresh
+install as far as auth is concerned. The Secret Service was running the whole
+time; it just has to be named. The shim appends
+`--password-store=gnome-libsecret` unless one was passed on the command line.
+`PROMETHEE_PASSWORD_STORE` overrides it — `basic` for a machine with no keyring,
+where the alternative is not persisting at all.
+
+The shim also writes `linux-shutdown.log` in `userData`: one line per start,
+carrying whether `session.bin` survived and which backend was selected, then
+`will-quit` and `exit`. It is unconditional and on disk because the question it
+answers outlives the process being asked. It is what turned "the login is lost
+somewhere" into the two lines above.
+
+It also settled a wrong guess. Being killed mid-token-rotation looked like the
+culprit, since nothing asks a Windows tray app to stop while on Linux
+everything does. The log shows a `SIGTERM` reaching `will-quit` and `exit 0`
+with the shim's own handler never firing: Electron already stops cleanly on a
+signal. That handler stays as a floor under the behaviour, not as a fix for it.
 
 **4 — Auto-updater off**
 

@@ -386,6 +386,22 @@
 		} catch {}
 	};
 
+	// Chromium picks its password store from XDG_CURRENT_DESKTOP, and on Hyprland
+	// — on any compositor it has not heard of — it recognises nothing and
+	// safeStorage.isEncryptionAvailable() comes back false. The app takes that at
+	// its word and never writes session.bin at all, so the login lives in memory
+	// and dies with the process: quitting the app logs you out.
+	//
+	// The Secret Service is there, it just has to be named. Set
+	// PROMETHEE_PASSWORD_STORE to override — "basic" for a machine with no
+	// keyring, where the alternative is not persisting at all.
+	if (!process.argv.some((arg) => arg.startsWith("--password-store"))) {
+		electron.app.commandLine.appendSwitch(
+			"password-store",
+			process.env.PROMETHEE_PASSWORD_STORE || "gnome-libsecret",
+		);
+	}
+
 	// Whether the encrypted session survived the last stop is the one fact this
 	// log exists to establish, and it has to be read before the app gets a
 	// chance to wipe it.
@@ -424,6 +440,15 @@
 
 	// The socket is only useful once handlers are registered, and they register
 	// during app startup.
+	// Logged next to the start line, because "the login did not persist" and
+	// "encryption was unavailable" are the same event seen from two ends.
+	electron.app.whenReady().then(() => {
+		shutdownLog(
+			`safeStorage ${electron.safeStorage.isEncryptionAvailable() ? "available" : "UNAVAILABLE"}` +
+				` (backend ${electron.safeStorage.getSelectedStorageBackend?.() ?? "unknown"})`,
+		);
+	});
+
 	if (electron.app.isReady()) listen();
 	else electron.app.once("ready", listen);
 })();
