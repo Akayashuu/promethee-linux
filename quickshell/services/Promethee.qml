@@ -334,16 +334,22 @@ Singleton {
         // The app is not always running, and it is not the bar's job to keep it
         // running. Retry quietly rather than give up on the first refusal.
         onConnectionStateChanged: {
-            if (!socket.connected) {
+            if (!socket.connected)
                 root.reset();
-                retryTimer.restart();
-            }
         }
     }
 
     Timer {
         id: retryTimer
+        // Bound to the state, not restarted from the disconnect signal. A
+        // connection that fails the instant it is attempted never reaches
+        // `connected`, so it never changes state either: a signal-driven retry
+        // fires once, finds no signal to hang the next one on, and the bar
+        // stays offline until Quickshell is restarted — even after the app
+        // comes back.
+        running: !socket.connected
         interval: 5000
+        repeat: true
         onTriggered: socket.connected = true
     }
 
