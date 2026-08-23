@@ -385,11 +385,17 @@ StyledPopup {
             font.pixelSize: Appearance.font.pixelSize.smallest
             opacity: 0.7
             color: Appearance.colors.colOnSurfaceVariant
-            text: Promethee.available
-                ? (Promethee.session
-                    ? Translation.tr("Click: end · Right click: dashboard")
-                    : Translation.tr("Click: start · Right click: dashboard"))
-                : Translation.tr("Click: launch Promethee")
+            text: {
+                if (!Promethee.available)
+                    return Translation.tr("Click: launch Promethee");
+                if (!Promethee.session)
+                    return Translation.tr("Click: start · Right click: dashboard");
+                // Ending is on the middle button on purpose: it is the one
+                // gesture here that cannot be undone.
+                return Promethee.paused
+                    ? Translation.tr("Click: resume · Middle: end · Right click: dashboard")
+                    : Translation.tr("Click: pause · Middle: end · Right click: dashboard");
+            }
         }
     }
 }

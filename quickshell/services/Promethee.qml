@@ -4,6 +4,7 @@ import qs.modules.common
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 
 /**
  * Promethee's focus session, in the bar.
@@ -200,21 +201,79 @@ Singleton {
         root.call("session:start", [task && task.length > 0 ? task : null]);
     }
 
+    /// Ends the session for good. Deliberate by design — see toggle().
     function stop() {
         root.call("session:end", []);
     }
 
-    /// One click, whichever state the session is in.
-    function toggle() {
-        if (root.session)
-            root.stop();
-        else
-            root.start("");
+    function pause() {
+        root.call("session:pause", []);
     }
 
-    /// Brings up the app's own dashboard window.
+    function resume() {
+        root.call("session:resume", []);
+    }
+
+    /**
+     * One click, whichever state the session is in — and it never ends a
+     * session. Ending is destructive: the session is written, the timer is
+     * gone, and a misclick costs the whole block. Pausing is not, so the
+     * cheap gesture does the reversible thing and ending gets its own.
+     */
+    function toggle() {
+        if (!root.session)
+            root.start("");
+        else if (root.paused)
+            root.resume();
+        else
+            root.pause();
+    }
+
+    /**
+     * Brings up the app's own dashboard window.
+     *
+     * The channel alone is not enough. It does show the window, but a window
+     * that already exists on another workspace is shown *there*, and the
+     * compositor is right to ignore an app that asks for focus on its own —
+     * that is how focus stealing works. So the raise is asked for twice: once
+     * from the app, once from here, where it is the direct result of a click.
+     */
     function showDashboard() {
         root.call("window:showDashboard", []);
+        // The window may not exist yet — showDashboard creates one when the app
+        // is sitting in the tray — so keep asking for a moment.
+        focusAttempts = 0;
+        focusTimer.restart();
+    }
+
+    property int focusAttempts: 0
+
+    /**
+     * Activation over the wlr foreign-toplevel protocol rather than a
+     * compositor dispatch. Two reasons: it works on anything wlroots-based
+     * rather than only Hyprland, and it does not go through hyprctl, whose
+     * dispatch line is re-parsed as Lua under a Lua-configured Hyprland and
+     * rejects `focuswindow class:promethee` outright.
+     */
+    function focusWindow() {
+        for (const toplevel of ToplevelManager.toplevels.values) {
+            if (toplevel.appId === "promethee") {
+                toplevel.activate();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    Timer {
+        id: focusTimer
+        interval: 120
+        repeat: true
+        onTriggered: {
+            root.focusAttempts += 1;
+            if (root.focusWindow() || root.focusAttempts > 12)
+                focusTimer.stop();
+        }
     }
 
     /// Starts the app itself, for when the socket is down. A second instance
@@ -269,4 +328,5 @@ Singleton {
     Process {
         id: launchProc
     }
+
 }

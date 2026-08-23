@@ -45,13 +45,20 @@ Item {
         id: mouseArea
         anchors.fill: parent
         hoverEnabled: !Config.options.bar.tooltips.clickToShow
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
 
         onPressed: event => {
-            if (event.button === Qt.LeftButton && Promethee.available)
-                Promethee.toggle();
-            else
+            // Nothing to drive until the app is up; any button starts it.
+            if (!Promethee.available) {
                 Promethee.activate();
+                return;
+            }
+            if (event.button === Qt.LeftButton)
+                Promethee.toggle();
+            else if (event.button === Qt.MiddleButton)
+                Promethee.stop();
+            else
+                Promethee.showDashboard();
         }
 
         Bar.PrometheeWidgetPopup {

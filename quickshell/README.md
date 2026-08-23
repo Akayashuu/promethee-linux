@@ -31,13 +31,28 @@ wires anything twice. It backs up every upstream file it modifies as
 
 ## Usage
 
-| Action | Horizontal bar | Vertical bar |
-| --- | --- | --- |
-| Left click | Start / end the session | Start / end the session |
-| Right click | Open the dashboard | Open the dashboard |
-| Hover | Session, day, level, streak, tracked app | — |
+| Action | Both bars |
+| --- | --- |
+| Left click | Start, then pause / resume |
+| Middle click | End the session |
+| Right click | Open the dashboard |
+| Hover | Day, week, per-app breakdown, level, streak |
 
-When Promethee is not running, either click launches it.
+Left click never ends a session. Ending is the one gesture here that cannot be
+undone — the session is written and the timer is gone — so the cheap gesture
+does the reversible thing and ending gets a button of its own.
+
+When Promethee is not running, any click launches it.
+
+Right click asks for the window twice: once through the app's own
+`window:showDashboard`, once over the wlr foreign-toplevel protocol. The
+channel alone shows a window that already exists *where it already is*, which
+from another workspace looks like the click did nothing — and a compositor is
+right to ignore an app that asks for focus on its own. Activating the toplevel
+from the bar is a direct result of a click, so it is honoured. It is also done
+over the protocol rather than through `hyprctl`, which keeps it working on any
+wlroots compositor, and avoids Hyprland's dispatch line under a Lua-based
+config, where `focuswindow class:promethee` is re-parsed as Lua and rejected.
 
 ## Configuration
 
