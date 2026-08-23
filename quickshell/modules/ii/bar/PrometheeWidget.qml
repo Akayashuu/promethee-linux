@@ -18,21 +18,7 @@ import QtQuick.Layouts
 Item {
     id: root
 
-    property color accent: {
-        if (!Promethee.available)
-            return Appearance.colors.colOnSurfaceVariant;
-        if (Promethee.paused)
-            return Appearance.colors.colOnSurfaceVariant;
-        return Promethee.running ? Appearance.m3colors.m3primary : Appearance.colors.colOnLayer1;
-    }
-
-    readonly property string glyph: {
-        if (!Promethee.available)
-            return "bolt";
-        if (Promethee.paused)
-            return "pause_circle";
-        return Promethee.running ? "local_fire_department" : "play_circle";
-    }
+    readonly property color accent: badge.accent
 
     readonly property string value: {
         if (!Promethee.available)
@@ -45,9 +31,6 @@ Item {
     implicitWidth: row.implicitWidth + 16
     implicitHeight: Appearance.sizes.barHeight
 
-    Behavior on accent {
-        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-    }
 
     // A running session tints the widget. That tint is the whole point of
     // putting this in the bar: knowing the clock is running without looking.
@@ -68,31 +51,10 @@ Item {
         anchors.centerIn: parent
         spacing: 5
 
-        MaterialSymbol {
-            id: glyphIcon
+        PrometheeGlyph {
+            id: badge
             Layout.alignment: Qt.AlignVCenter
-            iconSize: Appearance.font.pixelSize.larger
-            color: root.accent
-            text: root.glyph
-
-            // Slow breathing while the session runs: visible in peripheral
-            // vision, quiet enough to work next to.
-            SequentialAnimation on opacity {
-                running: Promethee.running
-                loops: Animation.Infinite
-                NumberAnimation { to: 0.55; duration: 1400; easing.type: Easing.InOutSine }
-                NumberAnimation { to: 1; duration: 1400; easing.type: Easing.InOutSine }
-            }
-
-            // The animation leaves opacity wherever it stopped; a session that
-            // ends must not leave the glyph half faded.
-            Connections {
-                target: Promethee
-                function onRunningChanged() {
-                    if (!Promethee.running)
-                        glyphIcon.opacity = 1;
-                }
-            }
+            size: Appearance.font.pixelSize.larger + 6
         }
 
         StyledText {

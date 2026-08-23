@@ -38,6 +38,8 @@
 	const STATE_INTERVAL_MS = 2000;
 	/** A handler that never settles must not wedge the client. */
 	const CALL_TIMEOUT_MS = 15000;
+	/** History and per-app totals move by the day, not by the second. */
+	const SLOW_TTL_MS = 30000;
 	/** Refuse oversized lines rather than buffer without bound. */
 	const MAX_LINE_BYTES = 64 * 1024;
 
@@ -110,6 +112,54 @@
 	// One flat object, everything a bar needs in a single push. Each field is
 	// read through the app's own channels, so it stays consistent with the UI.
 
+	/**
+	 * The daily history and the app breakdown are each a table scan, and neither
+	 * changes between two pushes. Cache them apart from the rest of the state.
+	 */
+	let slowCache = null;
+	let slowAt = 0;
+
+	async function readSlow() {
+		if (slowCache && Date.now() - slowAt < SLOW_TTL_MS) return slowCache;
+
+		// { "2026-08-23": 125, ... } — minutes per day, most recent last.
+		const history = await invoke("session:getFocusHistory", [7]).catch(() => null);
+		const days = history?.history ?? {};
+
+		// One row per day, each carrying a JSON list of apps by seconds.
+		const usage = await invoke("tracking:getDailyAppUsage", [1]).catch(() => null);
+		const rows = usage?.rows ?? [];
+		const todayKey = new Date().toLocaleDateString("en-CA");
+		const row = rows.find((entry) => entry.date === todayKey) ?? rows[0] ?? null;
+
+		let apps = [];
+		try {
+			apps = JSON.parse(row?.top_apps ?? "[]");
+		} catch {
+			apps = [];
+		}
+
+		slowCache = {
+			// Seven entries ending today, zero-filled: a bar chart with holes in
+			// it lies about which day is which.
+			history: lastSevenDays(days),
+			apps: Array.isArray(apps) ? apps.slice(0, 5) : [],
+			trackedSeconds: Number(row?.total_tracked_seconds) || 0,
+		};
+		slowAt = Date.now();
+		return slowCache;
+	}
+
+	function lastSevenDays(byDay) {
+		const out = [];
+		for (let back = 6; back >= 0; back -= 1) {
+			const day = new Date(Date.now() - back * 86400000);
+			const key = day.toLocaleDateString("en-CA");
+			out.push({ date: key, minutes: Number(byDay[key]) || 0 });
+		}
+		return out;
+	}
+
 	async function readState() {
 		const state = {
 			at: Date.now(),
@@ -159,6 +209,13 @@
 
 		const window = await activeWindow();
 		if (window) state.window = window;
+
+		const slow = await readSlow().catch(() => null);
+		if (slow) {
+			state.history = slow.history;
+			state.apps = slow.apps;
+			state.trackedSeconds = slow.trackedSeconds;
+		}
 
 		return state;
 	}

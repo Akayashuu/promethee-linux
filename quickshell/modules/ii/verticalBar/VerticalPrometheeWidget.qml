@@ -2,6 +2,7 @@ import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
 import QtQuick
+import qs.modules.ii.bar as Bar
 
 /**
  * Variant for the vertical bar. Forty pixels of width fit a glyph and one
@@ -11,51 +12,21 @@ import QtQuick
 Item {
     id: root
 
-    property color accent: Promethee.running && Promethee.available
-        ? Appearance.m3colors.m3primary
-        : Appearance.colors.colOnSurfaceVariant
+    readonly property color accent: badge.accent
 
     implicitWidth: Appearance.sizes.verticalBarWidth
     implicitHeight: column.implicitHeight
 
-    Behavior on accent {
-        animation: Appearance.animation.elementMoveFast.colorAnimation.createObject(this)
-    }
 
     Column {
         id: column
         anchors.centerIn: parent
         spacing: 1
 
-        MaterialSymbol {
-            id: glyphIcon
+        Bar.PrometheeGlyph {
+            id: badge
             anchors.horizontalCenter: parent.horizontalCenter
-            iconSize: Appearance.font.pixelSize.large
-            color: root.accent
-            text: {
-                if (!Promethee.available)
-                    return "bolt";
-                if (Promethee.paused)
-                    return "pause_circle";
-                return Promethee.running ? "local_fire_department" : "play_circle";
-            }
-
-            SequentialAnimation on opacity {
-                running: Promethee.running
-                loops: Animation.Infinite
-                NumberAnimation { to: 0.55; duration: 1400; easing.type: Easing.InOutSine }
-                NumberAnimation { to: 1; duration: 1400; easing.type: Easing.InOutSine }
-            }
-
-            // The animation leaves opacity wherever it stopped; a session that
-            // ends must not leave the glyph half faded.
-            Connections {
-                target: Promethee
-                function onRunningChanged() {
-                    if (!Promethee.running)
-                        glyphIcon.opacity = 1;
-                }
-            }
+            size: Appearance.font.pixelSize.large + 8
         }
 
         // Minutes only: the second would not survive the width, and a vertical
@@ -66,12 +37,14 @@ Item {
             textFormat: Text.PlainText
             font.pixelSize: Appearance.font.pixelSize.smaller
             color: root.accent
-            text: Math.floor((Promethee.session ? Promethee.elapsed : Promethee.todaySeconds) / 60)
+            text: Promethee.formatCompact(Promethee.session ? Promethee.elapsed : Promethee.todaySeconds)
         }
     }
 
     MouseArea {
+        id: mouseArea
         anchors.fill: parent
+        hoverEnabled: !Config.options.bar.tooltips.clickToShow
         acceptedButtons: Qt.LeftButton | Qt.RightButton
 
         onPressed: event => {
@@ -79,6 +52,10 @@ Item {
                 Promethee.toggle();
             else
                 Promethee.activate();
+        }
+
+        Bar.PrometheeWidgetPopup {
+            hoverTarget: mouseArea
         }
     }
 }

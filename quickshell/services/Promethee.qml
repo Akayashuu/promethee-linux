@@ -48,6 +48,18 @@ Singleton {
     property var today: ({ sessions: 0, seconds: 0 })
     /// The window Promethee currently attributes time to: { app, title }.
     property var window: null
+    /// Focus minutes per day over the last seven days, oldest first:
+    /// [{ date, minutes }]. Zero-filled, so it is always seven long.
+    property var history: []
+    /// Today's breakdown, most used first: [{ app, seconds }]. Top five.
+    property var apps: []
+    /// Everything the tracker attributed today, sessions or not.
+    property int trackedSeconds: 0
+
+    /// Just the minutes, for the histogram.
+    readonly property var historyMinutes: root.history.map(day => day.minutes ?? 0)
+    /// Focus over the whole week, in seconds.
+    readonly property int weekSeconds: root.history.reduce((sum, day) => sum + (day.minutes ?? 0), 0) * 60
 
     /// True while a session is running and not paused.
     readonly property bool running: root.session !== null && !root.session.pauseStartedAt
@@ -83,6 +95,15 @@ Singleton {
         const h = Math.floor(total / 3600);
         const m = Math.floor((total % 3600) / 60);
         return h > 0 ? `${h} h ${String(m).padStart(2, "0")}` : `${m} min`;
+    }
+
+    /// "45m", "2h05" — for a bar forty pixels wide, where "2 h 05" does not fit
+    /// and a bare number does not say what it counts.
+    function formatCompact(seconds) {
+        const total = Math.max(0, Math.floor(seconds));
+        const h = Math.floor(total / 3600);
+        const m = Math.floor((total % 3600) / 60);
+        return h > 0 ? `${h}h${String(m).padStart(2, "0")}` : `${m}m`;
     }
 
     function recomputeElapsed() {
@@ -153,6 +174,9 @@ Singleton {
         root.session = state.session ?? null;
         root.today = state.today ?? { sessions: 0, seconds: 0 };
         root.window = state.window ?? null;
+        root.history = state.history ?? [];
+        root.apps = state.apps ?? [];
+        root.trackedSeconds = state.trackedSeconds ?? 0;
         root.recomputeElapsed();
     }
 
@@ -162,6 +186,9 @@ Singleton {
         root.session = null;
         root.today = { sessions: 0, seconds: 0 };
         root.window = null;
+        root.history = [];
+        root.apps = [];
+        root.trackedSeconds = 0;
         root.elapsed = 0;
         root.pending = {};
     }

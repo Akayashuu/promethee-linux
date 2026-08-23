@@ -20,10 +20,50 @@ die() { printf '%s\n' "$*" >&2; exit 1; }
 backup() { cp -n "$1" "$1.bak-promethee" 2>/dev/null || true; }
 
 install -Dm644 "$SRC/services/Promethee.qml" "$QS_DIR/services/Promethee.qml"
+install -Dm644 "$SRC/modules/ii/bar/PrometheeGlyph.qml" "$QS_DIR/modules/ii/bar/PrometheeGlyph.qml"
+install -Dm644 "$SRC/modules/ii/bar/PrometheeHistogram.qml" "$QS_DIR/modules/ii/bar/PrometheeHistogram.qml"
 install -Dm644 "$SRC/modules/ii/bar/PrometheeWidget.qml" "$QS_DIR/modules/ii/bar/PrometheeWidget.qml"
 install -Dm644 "$SRC/modules/ii/bar/PrometheeWidgetPopup.qml" "$QS_DIR/modules/ii/bar/PrometheeWidgetPopup.qml"
 install -Dm644 "$SRC/modules/ii/verticalBar/VerticalPrometheeWidget.qml" "$QS_DIR/modules/ii/verticalBar/VerticalPrometheeWidget.qml"
 echo "Widgets installed."
+
+# The badge wears Promethee's own logo rather than a generic glyph. That logo is
+# not redistributable, so it is never shipped here: it is derived from whatever
+# is already installed on this machine, into the Quickshell config directory.
+#
+# The source is a white mark on an opaque black square, and what the widget
+# needs is the mark alone: luminance becomes the alpha channel and the colour is
+# discarded, so the widget can tint it to match the bar. Without an installed
+# icon, or without Pillow, the widget falls back to a Material glyph.
+ICON_SRC=""
+for candidate in \
+    "$HOME/.local/share/icons/hicolor/512x512/apps/promethee.png" \
+    "$SRC/../dist/promethee.png"
+do
+    [ -f "$candidate" ] && { ICON_SRC="$candidate"; break; }
+done
+
+if [ -n "$ICON_SRC" ] && python3 -c "import PIL" 2>/dev/null; then
+    ICON_SRC="$ICON_SRC" OUT="$QS_DIR/assets/promethee-mark.png" python3 - <<'MARK'
+import os
+from PIL import Image
+
+source, out = os.environ["ICON_SRC"], os.environ["OUT"]
+os.makedirs(os.path.dirname(out), exist_ok=True)
+image = Image.open(source).convert("RGBA")
+# Trim the padding the icon ships with, so the mark fills the badge instead of
+# floating in the middle of it.
+box = image.getbbox()
+if box:
+    image = image.crop(box)
+mark = Image.new("RGBA", image.size, (255, 255, 255, 255))
+mark.putalpha(image.convert("L"))
+mark.resize((128, 128), Image.LANCZOS).save(out)
+MARK
+    echo "Logo derived: assets/promethee-mark.png"
+else
+    echo "Logo not derived (no installed icon, or Pillow missing) - using a Material glyph."
+fi
 
 patch_file() {
     local file="$1" anchor="$2" addition="$3"
