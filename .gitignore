@@ -1,0 +1,6 @@
+# Build output — contains Promethee's own code, which must never be committed
+# or redistributed (PolyForm Noncommercial).
+/dist/
+
+node_modules/
+*.log
