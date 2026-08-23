@@ -111,11 +111,33 @@ your `.desktop` entries once and maps class → `Name=` — you get the names yo
 launcher shows. Executable paths come from `/proc/<pid>/exe`. Results are cached
 for 900 ms so a burst of callers doesn't become a burst of IPC round-trips.
 
-**2 — Auto-updater off**
+**2 — Control socket**
+
+The app is tray-first and everything it can do sits behind an `ipcMain`
+handler, reachable from its own renderer only. A third patch prepends a shim
+that wraps `ipcMain.handle` as those handlers register, then serves them over a
+Unix socket, one JSON object per line — enough to drive a focus session from
+outside the app. That is what the [Quickshell bar
+widget](quickshell/README.md) talks to.
+
+**3 — Auto-updater off**
 
 `electron-updater`'s Linux path hard-requires an `APPIMAGE` env var and throws
 `ERR_UPDATER_OLD_FILE_NOT_FOUND` without one. There's no Linux release channel
 anyway, so its own `isUpdaterActive()` guard is answered with `false`.
+
+## Bar widget
+
+The focus timer, and starting or ending a session, from the Quickshell bar
+instead of a window:
+
+```bash
+./quickshell/install.sh
+qs -c ii kill && qs -c ii -d
+```
+
+See [quickshell/README.md](quickshell/README.md) for the protocol, the config
+block and manual wiring.
 
 ## Debugging
 
@@ -135,8 +157,10 @@ node -e 'require("./patches/linux-active-window.js");
 
 ```
 build.sh                          orchestration
-patches/linux-active-window.js    the shim
+patches/linux-active-window.js    the active-window shim
+patches/promethee-control.js      the control socket
 scripts/apply-patches.mjs         bundle rewrites
+quickshell/                       bar widget and its installer
 ```
 
 ## Licence

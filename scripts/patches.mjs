@@ -42,6 +42,20 @@ export const PATCHES = [
 	},
 
 	{
+		name: "inject control socket",
+		target: TARGET.MAIN,
+		required: true,
+		/**
+		 * Also a prepend, and it has to stay one: the shim wraps ipcMain.handle,
+		 * so it is only useful if it runs before the bundle registers anything.
+		 */
+		apply(source, { controlShim = "" } = {}) {
+			if (source.includes("__prometheeControl")) return [source, 0];
+			return [`${controlShim}\n${source}`, 1];
+		},
+	},
+
+	{
 		name: "linux branch in activeWindow dispatcher",
 		target: TARGET.MAIN,
 		required: true,

@@ -101,6 +101,29 @@ test("refuses to inject twice", () => {
 
 // ---------------------------------------------------------------------------
 
+console.log("control socket injection");
+
+const control = patchByName("inject control socket");
+
+test("prepends the control shim", () => {
+	const [out, count] = control.apply("const a=1;", { controlShim: "/*CONTROL*/" });
+	assert.equal(count, 1);
+	assert.ok(out.startsWith("/*CONTROL*/"));
+});
+
+test("stays ahead of the bundle so it can wrap ipcMain.handle", () => {
+	const [out] = control.apply("ipcMain.handle('x',f);", { controlShim: "/*CONTROL*/" });
+	assert.ok(out.indexOf("/*CONTROL*/") < out.indexOf("ipcMain.handle"));
+});
+
+test("refuses to inject twice", () => {
+	const [once] = control.apply("const a=1;", { controlShim: "globalThis.__prometheeControl=0;" });
+	const [, count] = control.apply(once, { controlShim: "globalThis.__prometheeControl=0;" });
+	assert.equal(count, 0);
+});
+
+// ---------------------------------------------------------------------------
+
 console.log("auto-updater");
 
 const updater = patchByName("disable auto-updater");

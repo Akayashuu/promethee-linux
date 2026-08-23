@@ -48,6 +48,7 @@ const sources = new Map(bundles.map((f) => [f, fs.readFileSync(path.join(buildDi
 
 const context = {
 	shim: fs.readFileSync(path.join(repoRoot, "patches", "linux-active-window.js"), "utf8"),
+	controlShim: fs.readFileSync(path.join(repoRoot, "patches", "promethee-control.js"), "utf8"),
 };
 
 console.log(`patching ${bundles.length} bundle(s) in ${path.relative(process.cwd(), buildDir)}`);
