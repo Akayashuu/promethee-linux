@@ -36,8 +36,13 @@ Singleton {
         return configured.length > 0 ? configured : `${Quickshell.env("HOME")}/.local/bin/promethee`;
     }
 
-    /// True while the socket is up, i.e. while Promethee is running.
-    readonly property bool available: socket.connected
+    /// True while the socket is up, i.e. while Promethee is running. Answered
+    /// by `live` rather than by `socket.connected`, which stays true after a
+    /// failed connection attempt and so cannot tell a live app from a dead one.
+    readonly property bool available: root.live
+    /// True from the first line the server sends — it pushes a state event as
+    /// soon as a client connects — until the socket drops.
+    property bool live: false
     /// True once the app has reported a signed-in profile.
     property bool authenticated: false
     /// { displayName, level, totalXp, streak } or null.
@@ -128,7 +133,7 @@ Singleton {
 
     /// Calls one ipc channel. `callback(ok, data)` is optional.
     function call(channel, args, callback) {
-        if (!socket.connected) {
+        if (!root.live) {
             if (callback)
                 callback(false, null);
             return;
@@ -136,8 +141,8 @@ Singleton {
         const id = root.nextId++;
         if (callback)
             root.pending[id] = callback;
-        socket.write(`${JSON.stringify({ id: id, channel: channel, args: args ?? [] })}\n`);
-        socket.flush();
+        root.socket.write(`${JSON.stringify({ id: id, channel: channel, args: args ?? [] })}\n`);
+        root.socket.flush();
     }
 
     // The server guarantees one JSON object per line; a truncated one (app
@@ -152,6 +157,7 @@ Singleton {
         } catch (e) {
             return; // Unusable line: keep the last known state.
         }
+        root.live = true;
 
         if (payload.event === "state") {
             root.apply(payload.state);
@@ -182,6 +188,7 @@ Singleton {
     }
 
     function reset() {
+        root.live = false;
         root.authenticated = false;
         root.profile = null;
         root.session = null;
@@ -321,36 +328,45 @@ Singleton {
             root.launch();
     }
 
-    Socket {
-        id: socket
-        path: root.socketPath
-        connected: true
+    // A Socket that has failed to connect once will not try again, whatever is
+    // written to `connected` afterwards — so reconnecting means building a new
+    // one. The Loader is there to be able to throw the old one away.
+    readonly property var socket: socketLoader.item
 
-        parser: SplitParser {
-            splitMarker: "\n"
-            onRead: data => root.ingest(data)
-        }
+    Loader {
+        id: socketLoader
+        active: true
+        sourceComponent: Component {
+            Socket {
+                path: root.socketPath
+                connected: true
 
-        // The app is not always running, and it is not the bar's job to keep it
-        // running. Retry quietly rather than give up on the first refusal.
-        onConnectionStateChanged: {
-            if (!socket.connected)
-                root.reset();
+                parser: SplitParser {
+                    splitMarker: "\n"
+                    onRead: data => root.ingest(data)
+                }
+
+                onConnectionStateChanged: {
+                    if (!connected)
+                        root.reset();
+                }
+            }
         }
     }
 
     Timer {
         id: retryTimer
-        // Bound to the state, not restarted from the disconnect signal. A
-        // connection that fails the instant it is attempted never reaches
-        // `connected`, so it never changes state either: a signal-driven retry
-        // fires once, finds no signal to hang the next one on, and the bar
-        // stays offline until Quickshell is restarted — even after the app
-        // comes back.
-        running: !socket.connected
-        interval: 5000
+        // Driven by `live`, not by the socket's own `connected`, which stays
+        // true after a refused attempt and so cannot tell a live app from a
+        // dead one. The app is not always running, and it is not the bar's job
+        // to keep it running: retry quietly rather than give up.
+        running: !root.live
+        interval: 3000
         repeat: true
-        onTriggered: socket.connected = true
+        onTriggered: {
+            socketLoader.active = false;
+            socketLoader.active = true;
+        }
     }
 
     Timer {
