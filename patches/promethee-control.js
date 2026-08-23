@@ -361,6 +361,34 @@
 		});
 	}
 
+	// Windows never asks this app to stop; Linux does it constantly — systemd on
+	// logout, the session manager on reboot, a plain `kill` from a terminal.
+	// Electron ignores those signals, so the process dies where it stands.
+	//
+	// That is how the login is lost. Supabase rotates the refresh token on every
+	// refresh, and the new one only reaches disk when the app writes it. Killed
+	// mid-rotation, the token left in session.bin is one Supabase has already
+	// spent; the next start presents it, is told "Already Used", and the app
+	// wipes the session and asks for the e-mail again.
+	//
+	// Quitting properly costs one handler and lets the app finish its writes.
+	let quitting = false;
+	for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"]) {
+		process.on(signal, () => {
+			if (quitting) return;
+			quitting = true;
+			log(`${signal} — quitting`);
+			try {
+				electron.app.quit();
+			} catch {
+				process.exit(0);
+			}
+			// A hung renderer must not turn a clean stop into a hard kill.
+			const bail = setTimeout(() => process.exit(0), 4000);
+			if (typeof bail.unref === "function") bail.unref();
+		});
+	}
+
 	globalThis.__prometheeControl = { invoke, readState, socketPath };
 
 	// The socket is only useful once handlers are registered, and they register
