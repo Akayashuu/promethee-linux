@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: shellcheck
+        run: shellcheck build.sh
+
+      - name: syntax
+        run: |
+          node --check patches/linux-active-window.js
+          node --check scripts/patches.mjs
+          node --check scripts/apply-patches.mjs
+
+      - name: patch anchors
+        run: node scripts/anchors.test.mjs

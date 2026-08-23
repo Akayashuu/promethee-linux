@@ -2,5 +2,9 @@
 # or redistributed (PolyForm Noncommercial).
 /dist/
 
+# Local copies of the source bundle, wherever they land.
+/.source/
+/.backup/
+
 node_modules/
 *.log

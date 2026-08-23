@@ -1,0 +1,17 @@
+{
+	"name": "promethee-linux",
+	"version": "1.0.0",
+	"description": "Run Promethee natively on Linux",
+	"private": true,
+	"type": "module",
+	"license": "MIT",
+	"scripts": {
+		"build": "./build.sh",
+		"test": "node scripts/anchors.test.mjs",
+		"lint": "biome check .",
+		"format": "biome check --write ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.12"
+	}
+}

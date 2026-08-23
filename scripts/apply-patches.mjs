@@ -1,18 +1,19 @@
 #!/usr/bin/env node
 /**
- * Rewrites Promethee's main-process bundles so the app works on Linux.
+ * Applies the Linux patches to an extracted Promethee app bundle.
  *
- * Usage: node scripts/apply-patches.mjs <extracted-app-dir>
+ *   node scripts/apply-patches.mjs <extracted-app-dir>
  *
- * The bundles are minified and their identifiers are regenerated on every
- * upstream build, so every patch anchors on a structural signature rather than
- * on a name. A required patch that matches nothing fails the run rather than
- * producing a half-working app.
+ * The patch definitions live in patches.mjs; this file only locates the
+ * bundles, runs the transforms and writes the result. A required patch that
+ * matches nothing aborts before anything is written — a loud failure beats a
+ * half-working app.
  */
 
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { PATCHES, TARGET } from "./patches.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.join(here, "..");
@@ -29,7 +30,7 @@ if (!fs.existsSync(buildDir)) {
 	process.exit(1);
 }
 
-/** Bundle files, largest first: the main bundle is always the big index-*.js. */
+// Largest first: the main-process bundle is always the big index-*.js.
 const bundles = fs
 	.readdirSync(buildDir)
 	.filter((f) => f.endsWith(".js"))
@@ -43,98 +44,53 @@ if (!mainBundle) {
 	process.exit(1);
 }
 
-const sources = new Map(
-	bundles.map((f) => [f, fs.readFileSync(path.join(buildDir, f), "utf8")]),
-);
+const sources = new Map(bundles.map((f) => [f, fs.readFileSync(path.join(buildDir, f), "utf8")]));
 
-let failed = false;
-
-/**
- * @param name     human label, shown in the run log
- * @param files    bundle filenames to try
- * @param fn       (source) => [newSource, siteCount]
- * @param required whether a zero-match aborts the build
- */
-function patch(name, files, fn, { required = true } = {}) {
-	let total = 0;
-	for (const file of files) {
-		const before = sources.get(file);
-		const [after, count] = fn(before);
-		if (count > 0 && after !== before) {
-			sources.set(file, after);
-			total += count;
-			console.log(`  ok    ${name} — ${count} site(s) in ${file}`);
-		}
-	}
-	if (total === 0) {
-		const level = required ? "FAIL " : "warn ";
-		console.error(`  ${level} ${name}: no match — upstream layout changed`);
-		if (required) failed = true;
-	}
-	return total;
-}
+const context = {
+	shim: fs.readFileSync(path.join(repoRoot, "patches", "linux-active-window.js"), "utf8"),
+};
 
 console.log(`patching ${bundles.length} bundle(s) in ${path.relative(process.cwd(), buildDir)}`);
 
-// ---------------------------------------------------------------------------
-// 1. Inject the Linux active-window backend into the main bundle.
+// The shim's global is the marker: if it's already there, this bundle has been
+// through the patcher before.
+const alreadyPatched = sources.get(mainBundle).includes("__prometheeLinuxActiveWindow");
 
-patch("inject active-window shim", [mainBundle], (src) => {
-	if (src.includes("__prometheeLinuxActiveWindow")) return [src, 0];
-	const shim = fs.readFileSync(path.join(repoRoot, "patches", "linux-active-window.js"), "utf8");
-	return [`${shim}\n${src}`, 1];
-});
+let failed = false;
 
-// ---------------------------------------------------------------------------
-// 2. Route the platform dispatcher through it.
-//
-// Upstream:
-//   async function Aw(e={}){if(process.platform==="win32")return Iqe(e);
-//                           if(process.platform!=="darwin")return null; ...}
-// Identifiers vary per build; the two consecutive platform checks do not.
+for (const patch of PATCHES) {
+	const targets = patch.target === TARGET.MAIN ? [mainBundle] : bundles;
+	let total = 0;
 
-patch("linux branch in activeWindow dispatcher", [mainBundle], (src) => {
-	const re =
-		/(async function \w+\(\w+=\{\}\)\{if\(process\.platform==="win32"\)return \w+\(\w+\);)(if\(process\.platform!=="darwin"\)return null;)/g;
-	let count = 0;
-	const out = src.replace(re, (_m, head, tail) => {
-		count += 1;
-		return `${head}if(process.platform==="linux")return globalThis.__prometheeLinuxActiveWindow();${tail}`;
-	});
-	return [out, count];
-});
+	for (const file of targets) {
+		const before = sources.get(file);
+		const [after, count] = patch.apply(before, context);
+		if (count > 0 && after !== before) {
+			sources.set(file, after);
+			total += count;
+			console.log(`  ok    ${patch.name} — ${count} site(s) in ${file}`);
+		}
+	}
 
-// ---------------------------------------------------------------------------
-// 3. Switch the auto-updater off.
-//
-// electron-updater's Linux path hard-requires an APPIMAGE env var and throws
-// ERR_UPDATER_OLD_FILE_NOT_FOUND without one. There is no Linux release channel
-// to update from anyway, so answer its own isUpdaterActive() guard with false.
-
-patch(
-	"disable auto-updater",
-	bundles,
-	(src) => {
-		const re = /(isUpdaterActive\(\)\s*\{)/g;
-		let count = 0;
-		const out = src.replace(re, (_m, head) => {
-			count += 1;
-			return `${head}if(process.platform==="linux")return!1;`;
-		});
-		return [out, count];
-	},
-	{ required: false },
-);
-
-// ---------------------------------------------------------------------------
+	if (total === 0) {
+		// Zero matches has two very different causes. Saying "upstream changed"
+		// when the bundle is simply already patched sends people hunting a bug
+		// that isn't there.
+		const reason = alreadyPatched
+			? "already patched — re-extract app.asar for a clean build"
+			: "no match — upstream layout changed";
+		console.error(`  ${patch.required ? "FAIL " : "warn "} ${patch.name}: ${reason}`);
+		if (patch.required) failed = true;
+	}
+}
 
 if (failed) {
 	console.error("\naborted: a required patch did not apply — nothing written");
 	process.exit(1);
 }
 
-for (const [file, src] of sources) {
-	fs.writeFileSync(path.join(buildDir, file), src);
+for (const [file, source] of sources) {
+	fs.writeFileSync(path.join(buildDir, file), source);
 }
 
 console.log("\npatches applied");

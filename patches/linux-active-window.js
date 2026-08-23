@@ -196,7 +196,7 @@
 		} catch {
 			return null;
 		}
-		if (!win || !win.class) return null;
+		if (!win?.class) return null;
 		const [x, y] = Array.isArray(win.at) ? win.at : [null, null];
 		const [width, height] = Array.isArray(win.size) ? win.size : [null, null];
 		return shape("hyprland", {
