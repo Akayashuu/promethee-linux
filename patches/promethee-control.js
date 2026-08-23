@@ -372,22 +372,53 @@
 	// wipes the session and asks for the e-mail again.
 	//
 	// Quitting properly costs one handler and lets the app finish its writes.
+	// Kept unconditionally, and on disk rather than on stdout: the interesting
+	// question — was the app asked to stop, and did it get to finish? — can only
+	// be answered after the reboot that ends the process asking it.
+	const shutdownLog = (line) => {
+		try {
+			const file = path.join(electron.app.getPath("userData"), "linux-shutdown.log");
+			// Six reboots is plenty of history for a file nobody prunes.
+			try {
+				if (fs.statSync(file).size > 8192) fs.truncateSync(file, 0);
+			} catch {}
+			fs.appendFileSync(file, `${new Date().toISOString()} ${line}\n`);
+		} catch {}
+	};
+
+	// Whether the encrypted session survived the last stop is the one fact this
+	// log exists to establish, and it has to be read before the app gets a
+	// chance to wipe it.
+	shutdownLog(
+		`started pid ${process.pid}, session.bin ${
+			fs.existsSync(path.join(electron.app.getPath("userData"), "session.bin")) ? "present" : "MISSING"
+		}`,
+	);
+
 	let quitting = false;
 	for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"]) {
 		process.on(signal, () => {
 			if (quitting) return;
 			quitting = true;
 			log(`${signal} — quitting`);
+			shutdownLog(`${signal} received, quitting`);
 			try {
 				electron.app.quit();
 			} catch {
+				shutdownLog("app.quit() threw, exiting");
 				process.exit(0);
 			}
 			// A hung renderer must not turn a clean stop into a hard kill.
-			const bail = setTimeout(() => process.exit(0), 4000);
+			const bail = setTimeout(() => {
+				shutdownLog("quit did not finish in 4s, exiting anyway");
+				process.exit(0);
+			}, 4000);
 			if (typeof bail.unref === "function") bail.unref();
 		});
 	}
+
+	electron.app.on("will-quit", () => shutdownLog("will-quit"));
+	process.on("exit", (code) => shutdownLog(`exit ${code}`));
 
 	globalThis.__prometheeControl = { invoke, readState, socketPath };
 

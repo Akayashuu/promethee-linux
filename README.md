@@ -120,22 +120,26 @@ Unix socket, one JSON object per line — enough to drive a focus session from
 outside the app. That is what the [Quickshell bar
 widget](quickshell/README.md) talks to.
 
-**3 — Quitting on a signal**
+**3 — A shutdown log, and a signal handler behind it**
 
-The same shim answers `SIGTERM`, `SIGINT` and `SIGHUP` with `app.quit()`.
+The app forgets the login across a reboot. Supabase rotates the refresh token
+on every refresh and the new one only reaches `session.bin` when the app writes
+it, so a process killed between the two leaves a token Supabase has already
+spent: the next start presents it, is told `Already Used`, and the app wipes the
+session and asks for the e-mail again — its own auth log calls this the *zombie*
+state.
 
-Nothing asks a Windows tray app to stop; on Linux everything does — systemd at
-logout, the session manager at reboot, a plain `kill` from a terminal. Electron
-installs no handler for those, so the process dies where it stands, and that is
-how the login goes missing. Supabase rotates the refresh token on every refresh
-and the new one only reaches `session.bin` when the app writes it; killed
-between the two, the token left on disk is one Supabase has already spent. The
-next start presents it, is told `Already Used`, and the app wipes the session
-and asks for the e-mail again — the logs call this the *zombie* state.
+Being killed mid-rotation was the obvious suspect, since nothing asks a Windows
+tray app to stop while on Linux everything does. It is not what happens here:
+the shim writes `linux-shutdown.log` in `userData`, and a `SIGTERM` reaches
+`will-quit` and `exit 0` with the handler below never firing — Electron already
+stops cleanly on a signal. The handler stays as a floor under that behaviour,
+not as a fix for it.
 
-Quitting properly lets the app finish that write. A four-second timer bails out
-to `process.exit(0)` so a hung renderer cannot turn a clean stop into a hard
-kill anyway.
+The log records each start with whether `session.bin` survived, which is the
+one fact that has to be read before the app gets a chance to wipe it. The
+question it leaves open is what the *start* does with a session that was stored
+by a clean stop; `PROMETHEE_DEBUG=1` (below) answers that side.
 
 **4 — Auto-updater off**
 
