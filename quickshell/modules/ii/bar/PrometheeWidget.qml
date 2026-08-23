@@ -11,9 +11,10 @@ import QtQuick.Layouts
  * while a session is open, the day's total otherwise. Everything else lives in
  * the popup, which has the room for it.
  *
- * Left click starts or ends the session, right click opens Promethee's own
- * dashboard. The popup is a tooltip and cannot take a click, so the actions
- * belong here.
+ * Left click starts, pauses and resumes; a long press ends. Right click
+ * opens Promethee's own dashboard. The popup is a tooltip — it closes the
+ * moment the pointer leaves the badge — so it cannot hold a button, and
+ * every action has to be a gesture on the badge itself.
  */
 Item {
     id: root
@@ -51,6 +52,18 @@ Item {
         anchors.centerIn: parent
         spacing: 5
 
+        // The hold has to look like it is doing something, or it reads as a
+        // click that did not register. It only shrinks when there is a session
+        // to end: a gesture that promises an action it will not perform is
+        // worse than no feedback at all.
+        scale: (mouseArea.pressed && Promethee.session) ? 0.82 : 1
+        Behavior on scale {
+            NumberAnimation {
+                duration: mouseArea.pressed ? mouseArea.pressAndHoldInterval : 160
+                easing.type: Easing.OutCubic
+            }
+        }
+
         PrometheeGlyph {
             id: badge
             Layout.alignment: Qt.AlignVCenter
@@ -84,8 +97,30 @@ Item {
         anchors.fill: parent
         hoverEnabled: !Config.options.bar.tooltips.clickToShow
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+        // Long enough that a slow click never trips it, short enough that the
+        // hold does not feel like waiting.
+        pressAndHoldInterval: 550
 
-        onPressed: event => {
+        /// Set when the hold already acted, so the release does not act again.
+        property bool consumed: false
+
+        onPressed: consumed = false
+
+        /**
+         * A trackpad has no middle button, so ending also lives on a long
+         * press. Both routes to it are gestures you cannot make by accident,
+         * which is the point: it is the only action here that cannot be undone.
+         */
+        onPressAndHold: event => {
+            if (event.button !== Qt.LeftButton || !Promethee.available || !Promethee.session)
+                return;
+            consumed = true;
+            Promethee.stop();
+        }
+
+        onReleased: event => {
+            if (consumed)
+                return;
             // Nothing to drive until the app is up; any button starts it.
             if (!Promethee.available) {
                 Promethee.activate();

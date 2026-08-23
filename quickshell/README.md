@@ -34,13 +34,23 @@ wires anything twice. It backs up every upstream file it modifies as
 | Action | Both bars |
 | --- | --- |
 | Left click | Start, then pause / resume |
+| Long press | End the session |
 | Middle click | End the session |
 | Right click | Open the dashboard |
 | Hover | Day, week, per-app breakdown, level, streak |
 
 Left click never ends a session. Ending is the one gesture here that cannot be
 undone — the session is written and the timer is gone — so the cheap gesture
-does the reversible thing and ending gets a button of its own.
+does the reversible thing and ending gets a deliberate one. A trackpad has no
+middle button, which is why the long press exists; both routes are gestures you
+cannot make by accident. The badge shrinks while the press is held, so the
+gesture is visible before it fires.
+
+Ending also opens Promethee's session-complete window, the same one the
+app's own UI brings up: the recap where the session gets its message. The
+`session:end` channel only writes the session — the window is a second call
+the renderer makes with the payload the first one returns, and the bar makes
+it too. Without it a session ends silently and the message is lost.
 
 When Promethee is not running, any click launches it.
 

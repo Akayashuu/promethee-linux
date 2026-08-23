@@ -393,8 +393,8 @@ StyledPopup {
                 // Ending is on the middle button on purpose: it is the one
                 // gesture here that cannot be undone.
                 return Promethee.paused
-                    ? Translation.tr("Click: resume · Middle: end · Right click: dashboard")
-                    : Translation.tr("Click: pause · Middle: end · Right click: dashboard");
+                    ? Translation.tr("Click: resume · Hold: end · Right click: dashboard")
+                    : Translation.tr("Click: pause · Hold: end · Right click: dashboard");
             }
         }
     }

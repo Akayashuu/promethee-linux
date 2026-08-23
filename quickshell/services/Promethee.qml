@@ -201,9 +201,39 @@ Singleton {
         root.call("session:start", [task && task.length > 0 ? task : null]);
     }
 
-    /// Ends the session for good. Deliberate by design — see toggle().
+    /**
+     * Ends the session for good. Deliberate by design — see toggle().
+     *
+     * `session:end` only writes the session; it does not show anything. The
+     * recap window — where the session gets its message — is a second call the
+     * app's own renderer makes with the payload `session:end` just returned.
+     * Ending from the bar has to make that same call, or the session is filed
+     * away with no chance to say what it was.
+     */
     function stop() {
-        root.call("session:end", []);
+        root.call("session:end", [], (ok, data) => {
+            const session = ok ? (data?.session ?? null) : null;
+            if (!session)
+                return;
+            root.call("window:openSessionComplete", [{
+                task: session.task || "Session",
+                durationSeconds: session.durationSeconds || 0,
+                xpEarned: session.xpEarned || 0,
+                multiplier: session.multiplier,
+                streakBonus: session.streakBonus,
+                depthBonus: session.depthBonus,
+                currentStreak: session.currentStreak,
+                sessionId: session.id,
+                sessionInsight: session.sessionInsight,
+                signalSummary: session.signalSummary,
+                endReason: session.endReason,
+                idleTimeoutSec: session.idleTimeoutSec
+            }]);
+            // Same reason as showDashboard(): the window is created, but a
+            // compositor will not hand focus to an app that asks for it.
+            root.focusAttempts = 0;
+            focusTimer.restart();
+        });
     }
 
     function pause() {
