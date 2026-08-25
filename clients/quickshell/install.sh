@@ -38,7 +38,7 @@ echo "Widgets installed."
 ICON_SRC=""
 for candidate in \
     "$HOME/.local/share/icons/hicolor/512x512/apps/promethee.png" \
-    "$SRC/../dist/promethee.png"
+    "$SRC/../../dist/promethee.png"
 do
     [ -f "$candidate" ] && { ICON_SRC="$candidate"; break; }
 done

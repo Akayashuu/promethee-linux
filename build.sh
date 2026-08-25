@@ -301,6 +301,10 @@ if [[ "$DO_INSTALL" -eq 1 ]]; then
 	[[ -f "$DIST_DIR/promethee.png" ]] && cp "$DIST_DIR/promethee.png" "$ICONS_DIR/promethee.png"
 	ln -sf "$DIST_DIR/promethee" "$HOME/.local/bin/promethee"
 
+	# Linked rather than copied: a bar wired to it keeps working across rebuilds,
+	# and follows the repository if the client gains a fix.
+	ln -sf "$REPO_DIR/clients/promethee-ctl" "$HOME/.local/bin/promethee-ctl"
+
 	cat > "$APPS_DIR/promethee.desktop" <<EOF
 [Desktop Entry]
 Type=Application
@@ -313,7 +317,7 @@ Categories=Utility;Office;
 StartupWMClass=promethee
 EOF
 	update-desktop-database "$APPS_DIR" 2>/dev/null || true
-	say "installed launcher (~/.local/bin/promethee + desktop entry)"
+	say "installed launcher (~/.local/bin/promethee, promethee-ctl + desktop entry)"
 
 	# Upstream releases land without warning, and this build has no way to hear
 	# about them: the app's updater is off and its Windows channel would not

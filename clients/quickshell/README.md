@@ -16,9 +16,9 @@ socket, and the widget has nothing to talk to.
 ## Installation
 
 ```bash
-./quickshell/install.sh          # into ~/.config/quickshell/ii
-QS_DIR=/another/path ./quickshell/install.sh
-qs -c ii kill && qs -c ii -d     # restart to load the widget
+./clients/quickshell/install.sh          # into ~/.config/quickshell/ii
+QS_DIR=/another/path ./clients/quickshell/install.sh
+qs -c ii kill && qs -c ii -d             # restart to load the widget
 ```
 
 The script is idempotent: it looks for its own `// promethee` marker and never
@@ -78,31 +78,19 @@ property JsonObject promethee: JsonObject { // promethee
 
 ## How it works
 
-Everything Promethee can do sits behind an `ipcMain` handler, and those are
-reachable from its renderer only — a bar widget is not a renderer. The
-`patches/promethee-control.js` shim, injected at the top of the main bundle,
-wraps `ipcMain.handle` as the app registers its handlers, then serves them over
-a Unix socket at `$XDG_RUNTIME_DIR/promethee/control.sock`, one JSON object per
-line:
+The widget talks to Promethee over the control socket, documented in
+[docs/protocol.md](../../docs/protocol.md) — the same contract any other bar
+would be written against, and worth reading before changing anything here.
 
-```
--> {"id":1,"channel":"session:start","args":["Focus"]}
-<- {"id":1,"ok":true,"data":{"success":true}}
-<- {"event":"state","state":{"session":{...},"profile":{...},"today":{...}}}
-```
+`services/Promethee.qml` is the whole client: it holds one connection open,
+reconnects on a timer, and exposes the last state pushed to it as properties the
+widgets bind to. State arrives every two seconds and after every call, so the
+timer is live without anything polling; the seconds between pushes are counted
+locally from `startedAt`.
 
-State is pushed every two seconds and after every call, so the widget renders a
-live timer without polling. Two pseudo-channels are served by the shim itself:
-`state` returns the same object as the push, and `channels` lists every handler
-the app registered.
-
-The socket is 0600 in the user's own runtime directory. It is a full remote
-control for the app, so treat it as you would the session bus.
-
-The app also guards every handler against untrusted senders, by checking the
-frame URL against the renderer's own `index.html`. That guard is there to keep
-a hijacked web page from driving the main process, and it stays in place: the
-shim answers it with that exact URL rather than removing it.
+Nothing above the socket is Quickshell-specific. A widget for another bar is a
+different renderer of the same state, not a fork of this one — see
+[clients/README.md](../README.md).
 
 ## Files
 

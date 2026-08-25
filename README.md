@@ -138,8 +138,19 @@ for 900 ms so a burst of callers doesn't become a burst of IPC round-trips.
 The app is tray-first, and everything it can do sits behind an `ipcMain`
 handler reachable from its own renderer only. This patch wraps `ipcMain.handle`
 as those handlers register and serves them over a Unix socket, one JSON object
-per line — enough to drive a focus session from outside the app. It's what the
-[Quickshell bar widget](quickshell/README.md) talks to.
+per line — enough to drive a focus session from outside the app, and to render
+one in a bar:
+
+```
+-> {"id":1,"channel":"session:start","args":["Focus"]}
+<- {"id":1,"ok":true,"data":{"success":true}}
+<- {"event":"state","state":{"session":{…},"profile":{…},"today":{…}}}
+```
+
+State is pushed every two seconds and after every call, so a client renders a
+live timer without polling. The socket is 0600 in the user's own runtime
+directory; it is a full remote control for the app, so treat it as you would the
+session bus. [docs/protocol.md](docs/protocol.md) is the contract.
 
 ### 3 — Naming the password store
 
@@ -181,18 +192,29 @@ signal. That handler stays as a floor under the behaviour, not as a fix for it.
 `ERR_UPDATER_OLD_FILE_NOT_FOUND` without one. There's no Linux release channel
 anyway, so its own `isUpdaterActive()` guard is answered with `false`.
 
-## Bar widget
+## Clients
 
-The focus timer, and starting or ending a session, from the Quickshell bar
-instead of a window:
+The control socket is the integration point: the focus timer, and starting or
+ending a session, without opening a window. There is a Quickshell widget here
+because that is what this machine runs — nothing about the socket is specific to
+it.
 
 ```bash
-./quickshell/install.sh
+./clients/quickshell/install.sh      # bar widget for dots-hyprland "ii"
 qs -c ii kill && qs -c ii -d
 ```
 
-See [quickshell/README.md](quickshell/README.md) for the protocol, the config
-block and manual wiring.
+For any other bar — Waybar, eww, polybar — `promethee-ctl` puts the socket on
+stdout, and `--install` links it into `~/.local/bin`:
+
+```bash
+promethee-ctl state                       # one JSON object, then exit
+promethee-ctl watch                       # one per push, until interrupted
+promethee-ctl call session:start Focus
+```
+
+[clients/README.md](clients/README.md) has the wiring for each;
+[docs/protocol.md](docs/protocol.md) is what a new client is written against.
 
 ## Debugging
 
@@ -218,7 +240,9 @@ scripts/apply-patches.mjs         bundle rewrites
 scripts/update-check.sh           what the daily timer runs
 patches/linux-active-window.js    the active-window shim
 patches/promethee-control.js      the control socket
-quickshell/                       bar widget and its installer
+docs/protocol.md                  the socket's contract with its clients
+clients/promethee-ctl             the socket from a shell
+clients/quickshell/               bar widget and its installer
 ```
 
 ## Licence

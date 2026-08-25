@@ -16,7 +16,7 @@ jobs:
           node-version: 20
 
       - name: shellcheck
-        run: shellcheck build.sh scripts/update-check.sh quickshell/install.sh
+        run: shellcheck build.sh scripts/update-check.sh clients/quickshell/install.sh
 
       - name: syntax
         run: |
@@ -24,6 +24,7 @@ jobs:
           node --check patches/promethee-control.js
           node --check scripts/patches.mjs
           node --check scripts/apply-patches.mjs
+          node --check clients/promethee-ctl
           python3 -m py_compile scripts/extract-resources.py
 
       - name: patch anchors
