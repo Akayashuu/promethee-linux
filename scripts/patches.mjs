@@ -27,6 +27,9 @@ const LINUX_BRANCH =
 const UPDATER_GUARD = 'if (process.platform === "linux") return false;';
 const OPAQUE_PLATFORMS = '(process.platform === "win32" || process.platform === "linux")';
 
+/** The file the session shim writes, and the one string only it contains. */
+const SESSION_MARKER = "linux-session-mirror.json";
+
 export const PATCHES = [
 	{
 		name: "inject active-window shim",
@@ -53,6 +56,25 @@ export const PATCHES = [
 		apply(source, { controlShim = "" } = {}) {
 			if (source.includes("__prometheeControl")) return [source, 0];
 			return [`${controlShim}\n${source}`, 1];
+		},
+	},
+
+	{
+		name: "inject session persistence",
+		target: TARGET.MAIN,
+		required: true,
+		/**
+		 * Listed last of the three prepends, so it ends up outermost and runs
+		 * first. That order is the point: it restores the auth files before any
+		 * of the bundle's own module initialisers can look for them and conclude
+		 * this is a fresh install.
+		 */
+		apply(source, { sessionShim = "" } = {}) {
+			// The mirror's filename, not its global: the control shim reads
+			// __prometheeSessionMirror to log whether a session came back, so that
+			// name is in the bundle one prepend before this patch ever runs.
+			if (source.includes(SESSION_MARKER)) return [source, 0];
+			return [`${sessionShim}\n${source}`, 1];
 		},
 	},
 

@@ -394,12 +394,16 @@
 
 	// Whether the encrypted session survived the last stop is the one fact this
 	// log exists to establish, and it has to be read before the app gets a
-	// chance to wipe it.
+	// chance to wipe it. "restored" says it did not survive on its own and the
+	// session mirror put it back, which is the difference between a crash this
+	// machine shrugged off and one that cost a login.
 	shutdownLog(
 		`started pid ${process.pid}, session.bin ${
-			fs.existsSync(path.join(electron.app.getPath("userData"), "session.bin"))
-				? "present"
-				: "MISSING"
+			globalThis.__prometheeSessionMirror?.restored
+				? "restored"
+				: fs.existsSync(path.join(electron.app.getPath("userData"), "session.bin"))
+					? "present"
+					: "MISSING"
 		}`,
 	);
 

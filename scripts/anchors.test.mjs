@@ -124,6 +124,47 @@ test("refuses to inject twice", () => {
 
 // ---------------------------------------------------------------------------
 
+console.log("session persistence injection");
+
+const session = patchByName("inject session persistence");
+
+test("prepends the session shim", () => {
+	const [out, count] = session.apply("const a=1;", { sessionShim: "/*SESSION*/" });
+	assert.equal(count, 1);
+	assert.ok(out.startsWith("/*SESSION*/"));
+});
+
+test("runs before the control shim, so the auth files are back before anything reads them", () => {
+	// Prepends stack: the later a patch is listed, the earlier it runs.
+	const order = PATCHES.map((p) => p.name);
+	assert.ok(
+		order.indexOf("inject session persistence") > order.indexOf("inject control socket"),
+		"session persistence must be listed after the control socket",
+	);
+});
+
+test("refuses to inject twice", () => {
+	const shim = 'const MIRROR = "linux-session-mirror.json";';
+	const [once] = session.apply("const a=1;", { sessionShim: shim });
+	const [, count] = session.apply(once, { sessionShim: shim });
+	assert.equal(count, 0);
+});
+
+test("is not fooled by the control shim reading its global", () => {
+	// promethee-control.js logs __prometheeSessionMirror?.restored, and it is
+	// prepended first, so the global's name alone cannot mean "already injected".
+	const [, count] = session.apply("globalThis.__prometheeSessionMirror?.restored;", {
+		sessionShim: "/*SESSION*/",
+	});
+	assert.equal(count, 1);
+});
+
+test("is required, a silent logout is a broken build", () => {
+	assert.equal(session.required, true);
+});
+
+// ---------------------------------------------------------------------------
+
 console.log("opaque main window");
 
 const opaque = patchByName("opaque main window");

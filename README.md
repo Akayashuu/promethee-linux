@@ -60,7 +60,7 @@ release channel ──▶ extract ──▶ rebuild natives ──▶ patch ─�
 3. Extracts `resources/` (the `.nupkg` is a zip, so nothing has to be unpacked
    by hand)
 4. Rebuilds `better-sqlite3` and `keytar` for this Electron's ABI
-5. Applies the five patches below
+5. Applies the six patches below
 6. Fetches the matching Electron and writes `dist/promethee`
 
 Nothing is pinned: the manifest names whichever build is current, so a rebuild
@@ -186,13 +186,49 @@ everything does. The log shows a `SIGTERM` reaching `will-quit` and `exit 0`
 with the shim's own handler never firing: Electron already stops cleanly on a
 signal. That handler stays as a floor under the behaviour, not as a fix for it.
 
-### 4. Auto-updater off
+### 4. Surviving a hard reboot
+
+Naming the password store gets the login written to disk. Keeping it there is a
+second problem, and a machine that stops without asking is what finds it.
+
+The logged-in state is three files in `userData`: `session.bin` (the tokens,
+through `safeStorage`), `has-session.json` (the flag the app checks before it
+will even read the tokens) and `session-user.json` (the cached user, which is
+what lets a start with no network keep you signed in). None of the three is
+written durably. `session.bin` is `fsync`ed but opened with `"w"`, so it's
+truncated in place and the directory entry is never synced; the other two are a
+bare `writeFileSync`. On ext4 with delayed allocation, a power cut or a forced
+reboot can take all three, and the log says so afterwards:
+
+```
+2026-08-25T04:57:15.275Z started pid 1126883, session.bin present
+<a hole of NULs where the tail of the log should be>
+2026-08-25T10:09:18.182Z started pid 9818, session.bin MISSING
+```
+
+Nothing signed out and nothing expired. The app comes back calling itself a new
+install, and a session that was still running is left orphaned in the database.
+
+So the shim keeps its own copy, written the way the originals should have been:
+temp file, `fsync`, `rename`, then `fsync` of the directory, which is what makes
+the rename itself survive. At startup, any of the three that is missing is put
+back from the copy.
+
+What it must never do is resurrect a session that really is over, and that case
+is distinguishable. Signing out and a refresh token the server rejects both
+delete these files *while the app is running*, so a disappearance this process
+witnesses is deliberate and takes the copy with it. A disappearance that has
+already happened by the time the process starts had no author. That is the
+crash, and only that gets restored. `linux-shutdown.log` records which of the
+two happened: `session.bin restored` is a reboot this machine shrugged off.
+
+### 5. Auto-updater off
 
 `electron-updater`'s Linux path hard-requires an `APPIMAGE` env var and throws
 `ERR_UPDATER_OLD_FILE_NOT_FOUND` without one. There's no Linux release channel
 anyway, so its own `isUpdaterActive()` guard is answered with `false`.
 
-### 5. Opaque main window
+### 6. Opaque main window
 
 The main window has two option branches for three platforms:
 
@@ -256,15 +292,16 @@ node -e 'require("./patches/linux-active-window.js");
 ## Layout
 
 ```
-build.sh                          orchestration
-scripts/extract-resources.py      pulls resources/ out of the release package
-scripts/apply-patches.mjs         bundle rewrites
-scripts/update-check.sh           what the daily timer runs
-patches/linux-active-window.js    the active-window shim
-patches/promethee-control.js      the control socket
-docs/protocol.md                  the socket's contract with its clients
-clients/promethee-ctl             the socket from a shell
-clients/quickshell/               bar widget and its installer
+build.sh                              orchestration
+scripts/extract-resources.py          pulls resources/ out of the release package
+scripts/apply-patches.mjs             bundle rewrites
+scripts/update-check.sh               what the daily timer runs
+patches/linux-active-window.js        the active-window shim
+patches/promethee-control.js          the control socket
+patches/linux-session-persistence.js  the login's crash-durable copy
+docs/protocol.md                      the socket's contract with its clients
+clients/promethee-ctl                 the socket from a shell
+clients/quickshell/                   bar widget and its installer
 ```
 
 ## Licence
