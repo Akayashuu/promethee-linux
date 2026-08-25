@@ -7,8 +7,8 @@
 # code is redistributed by this repository.
 #
 #   ./build.sh                             # download, patch, build
-#   ./build.sh --install                   # also install a launcher and a
-#                                          # daily check for new releases
+#   ./build.sh --install                   # also install a launcher, window
+#                                          # rules, and a daily release check
 #   ./build.sh --check                     # is a newer release out?
 #   ./build.sh --source /path/to/resources # build from a local copy instead
 #
@@ -340,6 +340,33 @@ StartupWMClass=promethee
 EOF
 	update-desktop-database "$APPS_DIR" 2>/dev/null || true
 	say "installed launcher (~/.local/bin/promethee, promethee-ctl + desktop entry)"
+
+	# Wayland carries none of what makes an overlay an overlay, so the HUD and
+	# the panels arrive as ordinary windows and a tiling compositor tiles them.
+	# The rules in wm/ are the other half of the window-naming patch. Copied
+	# rather than linked, since they are meant to be edited, and never over a
+	# copy already there: a compositor's config belongs to whoever runs it.
+	install_wm_rules() {
+		local src=$1 dest=$2 line=$3
+		[[ -d "$(dirname "$dest")" ]] || return 0
+		if [[ -e "$dest" ]]; then
+			say "window rules already at ${dest/#$HOME/\~}, left alone"
+		else
+			cp "$REPO_DIR/wm/$src" "$dest"
+			say "installed window rules, add to your config: $line"
+		fi
+	}
+
+	# Hyprland reads either a .conf or, on the dotfiles this repo's bar widget
+	# targets, a Lua config. Same rules, and only the one in use is written.
+	if [[ "$(hyprctl systeminfo 2>/dev/null | grep -c 'configProvider: lua')" -gt 0 ]]; then
+		install_wm_rules hyprland.lua "$HOME/.config/hypr/promethee.lua" 'require("promethee")'
+	else
+		install_wm_rules hyprland.conf "$HOME/.config/hypr/promethee.conf" \
+			"source = ~/.config/hypr/promethee.conf"
+	fi
+	install_wm_rules sway.conf "$HOME/.config/sway/promethee.conf" \
+		"include ~/.config/sway/promethee.conf"
 
 	# Upstream releases land without warning, and this build has no way to hear
 	# about them: the app's updater is off and its Windows channel would not

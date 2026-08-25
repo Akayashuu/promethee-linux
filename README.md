@@ -24,6 +24,11 @@ channel, verifies it, patches it for Linux and writes `dist/`. First run pulls
 
 Verified on Promethee 1.3.26 / Electron 43.2.0 under Hyprland.
 
+`--install` also leaves compositor rules for the app's overlay windows beside
+your Hyprland or Sway config. Source them, or the HUD and the panels get tiled
+like ordinary windows: [patch 7](#7-naming-the-overlay-windows) is what they are
+for.
+
 ## Requirements
 
 - Node ≥ 20, npm, python3, curl
@@ -60,7 +65,7 @@ release channel ──▶ extract ──▶ rebuild natives ──▶ patch ─�
 3. Extracts `resources/` (the `.nupkg` is a zip, so nothing has to be unpacked
    by hand)
 4. Rebuilds `better-sqlite3` and `keytar` for this Electron's ABI
-5. Applies the six patches below
+5. Applies the seven patches below
 6. Fetches the matching Electron and writes `dist/promethee`
 
 Nothing is pinned: the manifest names whichever build is current, so a rebuild
@@ -250,6 +255,52 @@ rectangle over your wallpaper. The patch widens the condition rather than
 rewriting the branch, so Linux gets the opaque background Windows already uses
 and macOS keeps the exact object upstream wrote.
 
+### 7. Naming the overlay windows
+
+The app is built around overlays: the HUD pill, the chat and quest panels,
+notifications, the end-of-session effect. Each is a frameless, transparent,
+`focusable: false` window that places itself over your work and paints only the
+few pixels it needs:
+
+```js
+new BrowserWindow({ x, y, transparent: !0, backgroundColor: "#00000000",
+                    alwaysOnTop: !0, focusable: !1, skipTaskbar: !0,
+                    visibleOnAllWorkspaces: !0, type: process.platform === "darwin" ? "panel" : void 0 })
+```
+
+On Wayland, every option on that second and third line is a no-op, and so is
+the window's own `x`/`y`: a client cannot place itself, cannot ask to stay on
+top, and cannot say it isn't a normal window. A tiling compositor reads a
+toplevel like any other and gives it a tile. The chat panel is the one you
+notice. Collapsed, it draws a launcher bubble in one corner and leaves the rest
+of its surface transparent, so what lands on screen is a large invisible
+rectangle sitting on half a workspace. Its input region is empty, so clicking
+does not even reach it.
+
+Only the compositor can put that back, and a rule needs something to match on.
+Every window here is class `promethee` titled `Promethee`, which is nothing to
+match on. So the patch names them, from the role each window already loads
+with:
+
+```
+file:///…/index.html?mode=panel-block&block=dm&collapsed=1  →  Promethee Panel dm
+file:///…/index.html?mode=floating                          →  Promethee HUD
+file:///…/index.html?mode=full                              →  Promethee
+```
+
+The dashboard keeps the bare name and stays an ordinary, tileable window.
+Everything else becomes `Promethee <role>`, and the renderer is not allowed to
+title over it afterwards. [wm/](wm/) has the rules that follow from that, for
+Hyprland and Sway, and `--install` puts the right one next to your config:
+
+```
+windowrule = float, class:^(promethee)$, title:^(Promethee .+)$
+windowrule = pin,   class:^(promethee)$, title:^(Promethee .+)$
+```
+
+Sourcing them is left to you, and it is one line. Nothing else in this repo
+touches your compositor's config.
+
 ## Clients
 
 The control socket is the integration point: the focus timer, and starting or
@@ -299,6 +350,8 @@ scripts/update-check.sh               what the daily timer runs
 patches/linux-active-window.js        the active-window shim
 patches/promethee-control.js          the control socket
 patches/linux-session-persistence.js  the login's crash-durable copy
+patches/linux-overlay-windows.js      one name per window, for wm rules
+wm/                                   those rules, for Hyprland and Sway
 docs/protocol.md                      the socket's contract with its clients
 clients/promethee-ctl                 the socket from a shell
 clients/quickshell/                   bar widget and its installer

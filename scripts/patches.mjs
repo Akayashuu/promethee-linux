@@ -29,6 +29,8 @@ const OPAQUE_PLATFORMS = '(process.platform === "win32" || process.platform === 
 
 /** The file the session shim writes, and the one string only it contains. */
 const SESSION_MARKER = "linux-session-mirror.json";
+/** The global the window-naming shim publishes, and nothing else mentions. */
+const OVERLAY_MARKER = "__prometheeOverlayNames";
 
 export const PATCHES = [
 	{
@@ -56,6 +58,23 @@ export const PATCHES = [
 		apply(source, { controlShim = "" } = {}) {
 			if (source.includes("__prometheeControl")) return [source, 0];
 			return [`${controlShim}\n${source}`, 1];
+		},
+	},
+
+	{
+		name: "inject overlay window names",
+		target: TARGET.MAIN,
+		// A rule can still be written by hand against class and size, so an
+		// unnamed window is a worse app, not a broken one.
+		required: false,
+		/**
+		 * Another prepend, and it has to be one: it names windows from
+		 * `browser-window-created`, so it is only useful if it is listening
+		 * before the app opens its first window.
+		 */
+		apply(source, { overlayShim = "" } = {}) {
+			if (source.includes(OVERLAY_MARKER)) return [source, 0];
+			return [`${overlayShim}\n${source}`, 1];
 		},
 	},
 

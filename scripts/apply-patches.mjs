@@ -53,6 +53,7 @@ const context = {
 		path.join(repoRoot, "patches", "linux-session-persistence.js"),
 		"utf8",
 	),
+	overlayShim: fs.readFileSync(path.join(repoRoot, "patches", "linux-overlay-windows.js"), "utf8"),
 };
 
 console.log(`patching ${bundles.length} bundle(s) in ${path.relative(process.cwd(), buildDir)}`);

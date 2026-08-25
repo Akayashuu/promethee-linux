@@ -124,6 +124,36 @@ test("refuses to inject twice", () => {
 
 // ---------------------------------------------------------------------------
 
+console.log("overlay window name injection");
+
+const overlay = patchByName("inject overlay window names");
+
+test("prepends the naming shim", () => {
+	const [out, count] = overlay.apply("const a=1;", { overlayShim: "/*OVERLAY*/" });
+	assert.equal(count, 1);
+	assert.ok(out.startsWith("/*OVERLAY*/"));
+});
+
+test("stays ahead of the bundle so it hears about the first window", () => {
+	const [out] = overlay.apply("app.on('browser-window-created',f);", {
+		overlayShim: "/*OVERLAY*/",
+	});
+	assert.ok(out.indexOf("/*OVERLAY*/") < out.indexOf("browser-window-created"));
+});
+
+test("refuses to inject twice", () => {
+	const shim = "globalThis.__prometheeOverlayNames = {};";
+	const [once] = overlay.apply("const a=1;", { overlayShim: shim });
+	const [, count] = overlay.apply(once, { overlayShim: shim });
+	assert.equal(count, 0);
+});
+
+test("is not required, an untiled window is not worth failing a build over", () => {
+	assert.equal(overlay.required, false);
+});
+
+// ---------------------------------------------------------------------------
+
 console.log("session persistence injection");
 
 const session = patchByName("inject session persistence");

@@ -7,7 +7,7 @@
 	"license": "MIT",
 	"scripts": {
 		"build": "./build.sh",
-		"test": "node scripts/anchors.test.mjs && node scripts/session-mirror.test.mjs",
+		"test": "node scripts/anchors.test.mjs && node scripts/session-mirror.test.mjs && node scripts/overlay-names.test.mjs",
 		"lint": "biome check .",
 		"format": "biome check --write ."
 	},
