@@ -41,13 +41,13 @@
 	/** History and per-app totals move by the day, not by the second. */
 	const SLOW_TTL_MS = 30000;
 	/** Refuse oversized lines rather than buffer without bound. */
-	const MAX_LINE_BYTES = 64 * 1024;
+	const MAX_LINE_CHARS = 64 * 1024;
 
 	const log = (...a) => {
 		if (process.env.PROMETHEE_LINUX_DEBUG) console.log("[promethee-control]", ...a);
 	};
 
-	// ------------------------------------------------------- handler capture
+	// ---------------------------------------------------- handler capture
 
 	/** channel -> handler, filled as the app registers its own IPC. */
 	const handlers = new Map();
@@ -108,7 +108,8 @@
 		return Promise.race([call, timeout]);
 	}
 
-	// ------------------------------------------------------------------ state
+	// -------------------------------------------------------------- state
+
 	// One flat object, everything a bar needs in a single push. Each field is
 	// read through the app's own channels, so it stays consistent with the UI.
 
@@ -238,7 +239,7 @@
 			.catch(() => null);
 	}
 
-	// ----------------------------------------------------------------- server
+	// ------------------------------------------------------------- server
 
 	const clients = new Set();
 
@@ -323,7 +324,7 @@
 			let buffer = "";
 			socket.on("data", (chunk) => {
 				buffer += chunk;
-				if (buffer.length > MAX_LINE_BYTES) {
+				if (buffer.length > MAX_LINE_CHARS) {
 					send(socket, { ok: false, error: "line too long" });
 					socket.destroy();
 					return;
@@ -361,20 +362,9 @@
 		});
 	}
 
-	// Windows never asks this app to stop; Linux does it constantly — systemd on
-	// logout, the session manager on reboot, a plain `kill` from a terminal.
-	// Electron ignores those signals, so the process dies where it stands.
-	//
-	// That is how the login is lost. Supabase rotates the refresh token on every
-	// refresh, and the new one only reaches disk when the app writes it. Killed
-	// mid-rotation, the token left in session.bin is one Supabase has already
-	// spent; the next start presents it, is told "Already Used", and the app
-	// wipes the session and asks for the e-mail again.
-	//
-	// Quitting properly costs one handler and lets the app finish its writes.
-	// Kept unconditionally, and on disk rather than on stdout: the interesting
-	// question — was the app asked to stop, and did it get to finish? — can only
-	// be answered after the reboot that ends the process asking it.
+	// On disk rather than on stdout, and written unconditionally: the question it
+	// exists to answer — was the app asked to stop, and did it get to finish? —
+	// can only be read after the reboot that ended the process being asked.
 	const shutdownLog = (line) => {
 		try {
 			const file = path.join(electron.app.getPath("userData"), "linux-shutdown.log");
@@ -407,10 +397,21 @@
 	// chance to wipe it.
 	shutdownLog(
 		`started pid ${process.pid}, session.bin ${
-			fs.existsSync(path.join(electron.app.getPath("userData"), "session.bin")) ? "present" : "MISSING"
+			fs.existsSync(path.join(electron.app.getPath("userData"), "session.bin"))
+				? "present"
+				: "MISSING"
 		}`,
 	);
 
+	// Nothing asks a Windows tray app to stop; here everything does — systemd on
+	// logout, the session manager on reboot, a plain `kill`. Being killed
+	// mid-rotation would lose the login for good: the refresh token is rotated on
+	// every use and only reaches disk when the app writes it, so the copy left in
+	// session.bin would be one the server has already spent.
+	//
+	// The log says that is not what happens: SIGTERM reaches will-quit and exit 0
+	// with this handler never firing, because Electron already stops cleanly on a
+	// signal. It stays as a floor under that behaviour, not as a fix for it.
 	let quitting = false;
 	for (const signal of ["SIGTERM", "SIGINT", "SIGHUP"]) {
 		process.on(signal, () => {
@@ -438,8 +439,6 @@
 
 	globalThis.__prometheeControl = { invoke, readState, socketPath };
 
-	// The socket is only useful once handlers are registered, and they register
-	// during app startup.
 	// Logged next to the start line, because "the login did not persist" and
 	// "encryption was unavailable" are the same event seen from two ends.
 	electron.app.whenReady().then(() => {
@@ -449,6 +448,8 @@
 		);
 	});
 
+	// The socket is only useful once handlers are registered, and they register
+	// during app startup.
 	if (electron.app.isReady()) listen();
 	else electron.app.once("ready", listen);
 })();

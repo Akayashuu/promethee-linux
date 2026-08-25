@@ -28,7 +28,7 @@
 		if (process.env.PROMETHEE_LINUX_DEBUG) console.log("[promethee-linux]", ...a);
 	};
 
-	// ---------------------------------------------------------------- helpers
+	// ------------------------------------------------------------ helpers
 
 	function run(cmd, args) {
 		return new Promise((resolve) => {
@@ -58,7 +58,8 @@
 		}
 	}
 
-	// ------------------------------------------------- .desktop name resolution
+	// ------------------------------------------- .desktop name resolution
+
 	// Window classes are slugs ("code-oss", "org.gnome.Nautilus"). Users expect
 	// the name they see in their launcher, so index the desktop entries once and
 	// map class -> Name=. Falls back to a tidied-up class.
@@ -149,7 +150,7 @@
 		};
 	}
 
-	// -------------------------------------------------------------- Hyprland
+	// ----------------------------------------------------------- Hyprland
 
 	function hyprSocketPath() {
 		const runtime = process.env.XDG_RUNTIME_DIR;
@@ -210,7 +211,7 @@
 		});
 	}
 
-	// ------------------------------------------------------------------ Sway
+	// --------------------------------------------------------------- Sway
 
 	function findFocused(node) {
 		if (!node || typeof node !== "object") return null;
@@ -246,7 +247,7 @@
 		});
 	}
 
-	// ------------------------------------------------------------------- X11
+	// ---------------------------------------------------------------- X11
 
 	async function fromX11() {
 		if (!process.env.DISPLAY) return null;
@@ -281,7 +282,7 @@
 		});
 	}
 
-	// --------------------------------------------------------------- dispatch
+	// ----------------------------------------------------------- dispatch
 
 	const BACKENDS = [fromHyprland, fromSway, fromX11];
 
