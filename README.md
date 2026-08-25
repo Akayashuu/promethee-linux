@@ -294,9 +294,19 @@ title over it afterwards. [wm/](wm/) has the rules that follow from that, for
 Hyprland and Sway, and `--install` puts the right one next to your config:
 
 ```
-windowrule = float, class:^(promethee)$, title:^(Promethee .+)$
-windowrule = pin,   class:^(promethee)$, title:^(Promethee .+)$
+windowrule = float,        class:^(promethee)$, title:^(Promethee .+)$
+windowrule = pin,          class:^(promethee)$, title:^(Promethee .+)$
+windowrule = bordersize 0, class:^(promethee)$, title:^(Promethee .+)$
+windowrule = rounding 0,   class:^(promethee)$, title:^(Promethee .+)$
+windowrule = move 16 100%-h-16, title:^(Promethee Panel dm)$
 ```
+
+Floating them is half the job. An overlay paints its own shape and leaves the
+rest of its surface transparent, so a border and rounded corners land on the
+nothing around it: the invisible window becomes a rounded rectangle drawn over
+your terminal. And since the app's own placement is lost on the way to Wayland,
+the compositor centres what upstream put in a corner, so the last rule puts the
+chat back where its launcher belongs.
 
 Sourcing them is left to you, and it is one line. Nothing else in this repo
 touches your compositor's config.

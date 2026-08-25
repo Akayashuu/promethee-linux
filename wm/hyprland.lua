@@ -18,12 +18,30 @@ hl.window_rule({ match = match, float = true })
 hl.window_rule({ match = match, pin = true })
 hl.window_rule({ match = match, no_initial_focus = true })
 
--- They paint their own shape over your wallpaper, so anything the compositor
--- draws around them lands on the transparent part.
+-- They paint their own shape over your wallpaper, and most of that shape is
+-- nothing at all. Anything the compositor draws around a window lands on the
+-- transparent part instead, which is how an invisible window turns into a
+-- rounded rectangle floating over your terminal.
+hl.window_rule({ match = match, border_size = 0 })
+hl.window_rule({ match = match, rounding = 0 })
 hl.window_rule({ match = match, no_shadow = true })
 hl.window_rule({ match = match, no_blur = true })
+hl.window_rule({ match = match, no_anim = true })
 
 -- Nothing tells Hyprland where an overlay wanted to be, so it centres them.
--- Upstream anchors the chat 16px from the bottom left corner:
+-- Upstream puts the chat 16px from the bottom left corner, under its launcher.
+-- The Lua provider takes an expression rather than the `100%-h-16` of the
+-- legacy config, and monitor_w, monitor_h, window_w and window_h are what it
+-- knows. Percentages parse there and quietly do nothing.
+hl.window_rule({
+	match = { title = "^(Promethee Panel dm)$" },
+	move = { 16, "(monitor_h-window_h-16)" },
+})
+
+-- The other panels are yours to place, since where they belong depends on
+-- which corner you keep their launcher in:
 --
--- hl.window_rule({ match = { title = "^(Promethee Panel dm)$" }, move = { "16", "100%-h-16" } })
+-- hl.window_rule({
+-- 	match = { title = "^(Promethee Panel quests)$" },
+-- 	move = { "(monitor_w-window_w-16)", "(monitor_h-window_h-16)" },
+-- })
