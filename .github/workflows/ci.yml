@@ -16,13 +16,15 @@ jobs:
           node-version: 20
 
       - name: shellcheck
-        run: shellcheck build.sh
+        run: shellcheck build.sh scripts/update-check.sh quickshell/install.sh
 
       - name: syntax
         run: |
           node --check patches/linux-active-window.js
+          node --check patches/promethee-control.js
           node --check scripts/patches.mjs
           node --check scripts/apply-patches.mjs
+          python3 -m py_compile scripts/extract-resources.py
 
       - name: patch anchors
         run: node scripts/anchors.test.mjs

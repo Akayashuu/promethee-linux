@@ -2,9 +2,10 @@
 # or redistributed (PolyForm Noncommercial).
 /dist/
 
-# Local copies of the source bundle, wherever they land.
+# The downloaded release package and the resources/ tree extracted from it.
 /.source/
 /.backup/
 
 node_modules/
+__pycache__/
 *.log

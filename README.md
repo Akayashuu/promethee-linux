@@ -2,12 +2,14 @@
 
 Run [Promethee](https://promethee.io) natively on Linux.
 
-Promethee ships for Windows and macOS only. The Electron app is portable — the
-missing piece is a Linux backend for the one thing the product is built on:
-knowing which window you're looking at.
+Promethee ships for Windows and macOS only. The Electron app itself is
+portable — the missing piece is a Linux backend for the one thing the product
+is built on: knowing which window you're looking at.
 
-This repo adds that backend and builds a native app from a copy you already
-own. **No Promethee code is redistributed here.**
+This repo adds that backend, then builds a native app from Promethee's own
+Windows release. **No Promethee code is redistributed here.**
+
+## Install
 
 ```bash
 git clone https://github.com/Akayashuu/promethee-linux
@@ -16,18 +18,29 @@ cd promethee-linux
 promethee
 ```
 
+`build.sh` downloads the current Windows build from Promethee's release
+channel, verifies it, patches it for Linux and writes `dist/`. First run pulls
+~400 MiB; later builds reuse it.
+
 Verified on Promethee 1.3.26 / Electron 43.2.0 under Hyprland.
 
-## Status
+## Requirements
+
+- Node ≥ 20, npm, python3, curl
+- A C++ toolchain — `base-devel` (Arch) / `build-essential` (Debian)
+- `libsecret`, for keytar
+- A window backend: **Hyprland**, **Sway**, or **X11 + xdotool**
+
+## What works
 
 | | |
 |---|---|
-| Activity tracking, sessions, quests, XP, leaderboards, HUD | works |
-| App blocking | not ported — the blocker is Win32-only |
-| Launch at login | Electron reports `unsupported-platform` |
-| Virtual-desktop pinning | Windows-only, already guarded upstream |
+| Activity tracking, sessions, quests, XP, leaderboards, HUD | yes |
+| App blocking | no — the blocker is Win32-only |
+| Launch at login | no — Electron reports `unsupported-platform` |
+| Virtual-desktop pinning | no — Windows-only, already guarded upstream |
 
-Live proof from the app's own database, tracking a real session:
+From the app's own database, tracking a real session:
 
 ```
 window_events
@@ -36,51 +49,60 @@ window_events
   Promethee | electron | Promethee                         | hyprland
 ```
 
-## Requirements
-
-- Node ≥ 20, npm, python3
-- A C++ toolchain — `base-devel` (Arch) / `build-essential` (Debian)
-- `libsecret` — for keytar
-- A window backend: **Hyprland**, **Sway**, or **X11 + xdotool**
-
-## Getting a copy to build from
-
-Promethee has no Linux download, so install the Windows build under Wine once.
-You only need the files — it doesn't have to run well:
-
-```bash
-WINEPREFIX=~/.wine-promethee wine Promethee-x.y.z-Setup.exe
-```
-
-`build.sh` then finds it automatically. Or point it anywhere:
-
-```bash
-./build.sh --source /path/to/Promethee/app-1.3.26/resources
-```
-
-Once built, `dist/` is self-contained and the Wine prefix can be deleted.
-
 ## How it works
 
 ```
-your install ──▶ extract app.asar ──▶ rebuild natives ──▶ patch ──▶ dist/
+release channel ──▶ extract ──▶ rebuild natives ──▶ patch ──▶ dist/
 ```
 
-1. Finds your install (Wine prefix, or `--source`)
-2. Extracts `app.asar`
-3. Rebuilds `better-sqlite3` and `keytar` for the right Electron ABI
-4. Applies the patches below
-5. Downloads the matching Electron, writes `dist/promethee`
-6. `--install` adds a `.desktop` entry and `~/.local/bin/promethee`
+1. Reads Promethee's `RELEASES` manifest for the current build
+2. Downloads that package and checks it against the published SHA-1
+3. Extracts `resources/` — the `.nupkg` is a zip, so nothing has to be unpacked
+   by hand
+4. Rebuilds `better-sqlite3` and `keytar` for this Electron's ABI
+5. Applies the four patches below
+6. Fetches the matching Electron and writes `dist/promethee`
 
-### The patches
+Nothing is pinned: the manifest names whichever build is current, so a rebuild
+picks up a new release on its own.
+
+Already have a copy of the app bundle, or want to stay on an older one? Point at
+it instead of the channel:
+
+```bash
+./build.sh --source /path/to/resources
+```
+
+## Staying current
+
+The app's own updater is off and its channel wouldn't apply here anyway, so
+nothing would otherwise tell you a new Promethee is out:
+
+```bash
+./build.sh --check      # up to date (1.3.26)
+```
+
+Exit status is the interface — `0` current, `1` a newer release is out, `2` the
+channel was unreachable. `--install` wires that into a daily systemd user timer
+that notifies you when a rebuild is due:
+
+```bash
+systemctl --user list-timers promethee-update-check.timer
+systemctl --user disable --now promethee-update-check.timer   # opt out
+```
+
+A new release can also move the ground under a patch. That's not silent: the
+anchors are structural, and a required patch that stops matching fails the
+build rather than producing a half-working app.
+
+## The patches
 
 The bundles are minified and their identifiers change on every upstream build,
 so each patch anchors on a **structural signature** rather than a name. A
 required patch that matches nothing aborts the build — a loud failure beats a
 half-working app.
 
-**1 — Linux active-window backend**
+### 1 — Linux active-window backend
 
 Upstream's dispatcher falls through on anything that isn't Windows or macOS:
 
@@ -111,21 +133,20 @@ your `.desktop` entries once and maps class → `Name=` — you get the names yo
 launcher shows. Executable paths come from `/proc/<pid>/exe`. Results are cached
 for 900 ms so a burst of callers doesn't become a burst of IPC round-trips.
 
-**2 — Control socket**
+### 2 — Control socket
 
-The app is tray-first and everything it can do sits behind an `ipcMain`
-handler, reachable from its own renderer only. A third patch prepends a shim
-that wraps `ipcMain.handle` as those handlers register, then serves them over a
-Unix socket, one JSON object per line — enough to drive a focus session from
-outside the app. That is what the [Quickshell bar
-widget](quickshell/README.md) talks to.
+The app is tray-first, and everything it can do sits behind an `ipcMain`
+handler reachable from its own renderer only. This patch wraps `ipcMain.handle`
+as those handlers register and serves them over a Unix socket, one JSON object
+per line — enough to drive a focus session from outside the app. It's what the
+[Quickshell bar widget](quickshell/README.md) talks to.
 
-**3 — Naming the password store**
+### 3 — Naming the password store
 
-Without this the app forgets the login every time it closes.
+Without this, the app forgets your login every time it closes.
 
 Chromium picks its password store from `XDG_CURRENT_DESKTOP`. On Hyprland — on
-any compositor it has not heard of — it recognises nothing, and
+any compositor it hasn't heard of — it recognises nothing, and
 `safeStorage.isEncryptionAvailable()` comes back `false`. The app takes that at
 its word:
 
@@ -135,17 +156,17 @@ its word:
 ```
 
 `session.bin` is never written at all. The login lives in memory and dies with
-the process, so quitting the app logs you out — and every restart is a fresh
-install as far as auth is concerned. The Secret Service was running the whole
-time; it just has to be named. The shim appends
-`--password-store=gnome-libsecret` unless one was passed on the command line.
-`PROMETHEE_PASSWORD_STORE` overrides it — `basic` for a machine with no keyring,
-where the alternative is not persisting at all.
+the process, so quitting logs you out and every restart is a fresh install as
+far as auth is concerned. The Secret Service was running the whole time; it
+just has to be named. The shim appends `--password-store=gnome-libsecret`
+unless one was passed on the command line. `PROMETHEE_PASSWORD_STORE`
+overrides it — `basic` for a machine with no keyring, where the alternative is
+not persisting at all.
 
 The shim also writes `linux-shutdown.log` in `userData`: one line per start,
 carrying whether `session.bin` survived and which backend was selected, then
-`will-quit` and `exit`. It is unconditional and on disk because the question it
-answers outlives the process being asked. It is what turned "the login is lost
+`will-quit` and `exit`. It's unconditional and on disk because the question it
+answers outlives the process being asked. It's what turned "the login is lost
 somewhere" into the two lines above.
 
 It also settled a wrong guess. Being killed mid-token-rotation looked like the
@@ -154,7 +175,7 @@ everything does. The log shows a `SIGTERM` reaching `will-quit` and `exit 0`
 with the shim's own handler never firing: Electron already stops cleanly on a
 signal. That handler stays as a floor under the behaviour, not as a fix for it.
 
-**4 — Auto-updater off**
+### 4 — Auto-updater off
 
 `electron-updater`'s Linux path hard-requires an `APPIMAGE` env var and throws
 `ERR_UPDATER_OLD_FILE_NOT_FOUND` without one. There's no Linux release channel
@@ -192,16 +213,19 @@ node -e 'require("./patches/linux-active-window.js");
 
 ```
 build.sh                          orchestration
+scripts/extract-resources.py      pulls resources/ out of the release package
+scripts/apply-patches.mjs         bundle rewrites
+scripts/update-check.sh           what the daily timer runs
 patches/linux-active-window.js    the active-window shim
 patches/promethee-control.js      the control socket
-scripts/apply-patches.mjs         bundle rewrites
 quickshell/                       bar widget and its installer
 ```
 
 ## Licence
 
-Patches and scripts here are **MIT**.
+Everything in this repository is **MIT**.
 
 Promethee itself is **PolyForm Noncommercial 1.0.0** — personal use is fine,
-redistribution is not. That's why this builds from your own copy and ships no
-binaries. Don't publish the output.
+redistribution is not. Nothing here ships Promethee: the build fetches the
+official Windows release at build time, on your machine, and leaves the result
+there. Don't publish the output.
