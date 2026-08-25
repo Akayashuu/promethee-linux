@@ -124,6 +124,54 @@ test("refuses to inject twice", () => {
 
 // ---------------------------------------------------------------------------
 
+console.log("opaque main window");
+
+const opaque = patchByName("opaque main window");
+
+// Minified exactly as upstream emits it, at 1.3.26.
+const WINDOW_SHAPE =
+	'H=new _.BrowserWindow({width:o,height:i,show:!1,frame:!1,titleBarStyle:"hiddenInset",' +
+	'...process.platform==="win32"?{transparent:!1,backgroundColor:"#1D1D1D"}:' +
+	'{transparent:!0,vibrancy:"under-window",visualEffectState:"followsWindowActiveState"},' +
+	'appearance:"dark",hasShadow:!0});';
+
+test("matches the upstream shape", () => {
+	const [out, count] = opaque.apply(WINDOW_SHAPE);
+	assert.equal(count, 1);
+	assert.match(out, /\(process\.platform === "win32" \|\| process\.platform === "linux"\)\?/);
+});
+
+test("leaves the darwin branch untouched", () => {
+	const [out] = opaque.apply(WINDOW_SHAPE);
+	assert.ok(out.includes('{transparent:!0,vibrancy:"under-window",visualEffectState:'));
+});
+
+test("survives a different background colour", () => {
+	const recoloured = WINDOW_SHAPE.replace("#1D1D1D", "#101014");
+	const [out, count] = opaque.apply(recoloured);
+	assert.equal(count, 1);
+	assert.ok(out.includes('backgroundColor:"#101014"'), "keeps upstream's colour");
+});
+
+test("ignores a win32 spread that is not the window options", () => {
+	const unrelated = '...process.platform==="win32"?{a:1}:{b:2}';
+	const [, count] = opaque.apply(unrelated);
+	assert.equal(count, 0);
+});
+
+test("does not widen the condition twice", () => {
+	const [once] = opaque.apply(WINDOW_SHAPE);
+	const [twice, count] = opaque.apply(once);
+	assert.equal(count, 0);
+	assert.equal(twice, once);
+});
+
+test("is not required, an unreadable window is not a broken build", () => {
+	assert.equal(opaque.required, false);
+});
+
+// ---------------------------------------------------------------------------
+
 console.log("auto-updater");
 
 const updater = patchByName("disable auto-updater");

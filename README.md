@@ -60,7 +60,7 @@ release channel ──▶ extract ──▶ rebuild natives ──▶ patch ─�
 3. Extracts `resources/` (the `.nupkg` is a zip, so nothing has to be unpacked
    by hand)
 4. Rebuilds `better-sqlite3` and `keytar` for this Electron's ABI
-5. Applies the four patches below
+5. Applies the five patches below
 6. Fetches the matching Electron and writes `dist/promethee`
 
 Nothing is pinned: the manifest names whichever build is current, so a rebuild
@@ -191,6 +191,28 @@ signal. That handler stays as a floor under the behaviour, not as a fix for it.
 `electron-updater`'s Linux path hard-requires an `APPIMAGE` env var and throws
 `ERR_UPDATER_OLD_FILE_NOT_FOUND` without one. There's no Linux release channel
 anyway, so its own `isUpdaterActive()` guard is answered with `false`.
+
+### 5. Opaque main window
+
+The main window has two option branches for three platforms:
+
+```js
+...process.platform === "win32"
+  ? { transparent: !1, backgroundColor: "#1D1D1D" }
+  : { transparent: !0, vibrancy: "under-window", visualEffectState: "…" }
+```
+
+Linux lands in the macOS one. There, the `vibrancy` layer is what paints the
+background; here it's a silent no-op, and the page doesn't paint one either:
+
+```css
+html,body,#root{ … background:0 0; … }
+```
+
+So nothing fills the window. Frameless and see-through, it opens as an empty
+rectangle over your wallpaper. The patch widens the condition rather than
+rewriting the branch, so Linux gets the opaque background Windows already uses
+and macOS keeps the exact object upstream wrote.
 
 ## Clients
 

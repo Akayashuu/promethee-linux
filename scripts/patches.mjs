@@ -25,6 +25,7 @@ export const TARGET = {
 const LINUX_BRANCH =
 	'if (process.platform === "linux") return globalThis.__prometheeLinuxActiveWindow();';
 const UPDATER_GUARD = 'if (process.platform === "linux") return false;';
+const OPAQUE_PLATFORMS = '(process.platform === "win32" || process.platform === "linux")';
 
 export const PATCHES = [
 	{
@@ -74,6 +75,41 @@ export const PATCHES = [
 			const out = source.replace(re, (_m, head, tail) => {
 				count += 1;
 				return `${head}${LINUX_BRANCH}${tail}`;
+			});
+			return [out, count];
+		},
+	},
+
+	{
+		name: "opaque main window",
+		target: TARGET.MAIN,
+		// The app still tracks, still runs sessions, still shows its HUD; only its
+		// own window is unreadable. Not worth aborting a build over.
+		required: false,
+		/**
+		 * Upstream:
+		 *   ...process.platform==="win32"
+		 *     ?{transparent:!1,backgroundColor:"#1D1D1D"}
+		 *     :{transparent:!0,vibrancy:"under-window",visualEffectState:…}
+		 *
+		 * There are two branches for three platforms, so Linux takes the macOS one:
+		 * a transparent window whose background is painted by the vibrancy layer.
+		 * On Linux `vibrancy` is a silent no-op and the page paints no background
+		 * of its own (`html,body,#root{background:0 0}`), so nothing fills the
+		 * window and it comes up see-through.
+		 *
+		 * Widening the condition rather than rewriting the branch keeps macOS on
+		 * the exact object upstream wrote, including whatever it becomes later.
+		 * The vibrancy branch is the anchor: it is the one spread in the bundle
+		 * that switches window translucency on platform.
+		 */
+		apply(source) {
+			const re =
+				/\.\.\.process\.platform==="win32"\?(\{transparent:!1,backgroundColor:"[^"]*"\}):(\{transparent:!0,vibrancy:"under-window")/g;
+			let count = 0;
+			const out = source.replace(re, (_m, opaque, translucent) => {
+				count += 1;
+				return `...${OPAQUE_PLATFORMS}?${opaque}:${translucent}`;
 			});
 			return [out, count];
 		},
