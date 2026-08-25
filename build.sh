@@ -204,7 +204,13 @@ EOF
 	# npm >= 11 defers install scripts until approved; prebuilds need them.
 	npm install-scripts approve better-sqlite3 keytar >/dev/null 2>&1 || true
 	npm rebuild better-sqlite3 keytar --loglevel=error >/dev/null 2>&1
-	npx --yes @electron/rebuild -v "$ELECTRON_VERSION" -o better-sqlite3,keytar >/dev/null
+	# --force, because @electron/rebuild stamps build/Release/.forge-meta with the
+	# ABI it built for and then skips any module whose stamp already matches.
+	# dist/.native is not cleared between builds, so on the second run the stamp is
+	# already there and the rebuild is skipped, leaving whatever `npm rebuild` just
+	# produced against the system Node. The two ABIs are not the same (node 26 is
+	# 147, electron 43 is 148) and the app cannot dlopen the result.
+	npx --yes @electron/rebuild -v "$ELECTRON_VERSION" --force -o better-sqlite3,keytar >/dev/null
 )
 
 for mod in better-sqlite3 keytar; do
@@ -241,6 +247,22 @@ EOF
 )
 ELECTRON_BIN="$RUNTIME_DIR/node_modules/electron/dist/electron"
 [[ -x "$ELECTRON_BIN" ]] || die "electron $ELECTRON_VERSION did not install"
+
+# An addon that exists is not an addon this Electron can load, and nothing
+# earlier can tell the two apart: the check above only asks whether a .node file
+# was produced, and one always is. A mismatched ABI surfaces much later, at
+# startup, as initializeDatabase() throwing inside app.whenReady. The renderer
+# then shows "Database not initialized" on every screen it reaches, including
+# the login form, which is a long way from a build step. So load them here, in
+# the binary that will have to.
+say "verifying native modules"
+ELECTRON_RUN_AS_NODE=1 NATIVE_DIR="$APP_DIR/node_modules" "$ELECTRON_BIN" -e '
+	const path = require("node:path");
+	const dir = process.env.NATIVE_DIR;
+	require(path.join(dir, "keytar"));
+	new (require(path.join(dir, "better-sqlite3")))(":memory:").close();
+' || die "native modules do not load under electron $ELECTRON_VERSION.
+Delete $BUILD_DIR and re-run: a stale build cached there is the usual cause."
 
 # ---------------------------------------------------------- packaged layout
 
