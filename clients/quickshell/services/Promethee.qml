@@ -40,8 +40,8 @@ Singleton {
     /// by `live` rather than by `socket.connected`, which stays true after a
     /// failed connection attempt and so cannot tell a live app from a dead one.
     readonly property bool available: root.live
-    /// True from the first line the server sends — it pushes a state event as
-    /// soon as a client connects — until the socket drops.
+    /// True from the first line the server sends, which is a state event
+    /// pushed as soon as a client connects, until the socket drops.
     property bool live: false
     /// True once the app has reported a signed-in profile.
     property bool authenticated: false
@@ -95,7 +95,7 @@ Singleton {
         return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
     }
 
-    /// "2 h 05" — for a daily total, where the second is noise.
+    /// "2 h 05", for a daily total, where the second is noise.
     function formatShort(seconds) {
         const total = Math.max(0, Math.floor(seconds));
         const h = Math.floor(total / 3600);
@@ -103,7 +103,7 @@ Singleton {
         return h > 0 ? `${h} h ${String(m).padStart(2, "0")}` : `${m} min`;
     }
 
-    /// "45m", "2h05" — for a bar forty pixels wide, where "2 h 05" does not fit
+    /// "45m", "2h05", for a bar forty pixels wide, where "2 h 05" does not fit
     /// and a bare number does not say what it counts.
     function formatCompact(seconds) {
         const total = Math.max(0, Math.floor(seconds));
@@ -209,10 +209,10 @@ Singleton {
     }
 
     /**
-     * Ends the session for good. Deliberate by design — see toggle().
+     * Ends the session for good. Deliberate by design, see toggle().
      *
      * `session:end` only writes the session; it does not show anything. The
-     * recap window — where the session gets its message — is a second call the
+     * recap window, where the session gets its message, is a second call the
      * app's own renderer makes with the payload `session:end` just returned.
      * Ending from the bar has to make that same call, or the session is filed
      * away with no chance to say what it was.
@@ -252,7 +252,7 @@ Singleton {
     }
 
     /**
-     * One click, whichever state the session is in — and it never ends a
+     * One click, whichever state the session is in, and it never ends a
      * session. Ending is destructive: the session is written, the timer is
      * gone, and a misclick costs the whole block. Pausing is not, so the
      * cheap gesture does the reversible thing and ending gets its own.
@@ -271,14 +271,14 @@ Singleton {
      *
      * The channel alone is not enough. It does show the window, but a window
      * that already exists on another workspace is shown *there*, and the
-     * compositor is right to ignore an app that asks for focus on its own —
-     * that is how focus stealing works. So the raise is asked for twice: once
+     * compositor is right to ignore an app that asks for focus on its own,
+     * since that is how focus stealing works. So the raise is asked for twice: once
      * from the app, once from here, where it is the direct result of a click.
      */
     function showDashboard() {
         root.call("window:showDashboard", []);
-        // The window may not exist yet — showDashboard creates one when the app
-        // is sitting in the tray — so keep asking for a moment.
+        // The window may not exist yet, since showDashboard creates one when
+        // the app is sitting in the tray, so keep asking for a moment.
         focusAttempts = 0;
         focusTimer.restart();
     }
@@ -329,7 +329,7 @@ Singleton {
     }
 
     // A Socket that has failed to connect once will not try again, whatever is
-    // written to `connected` afterwards — so reconnecting means building a new
+    // written to `connected` afterwards, so reconnecting means building a new
     // one. The Loader is there to be able to throw the old one away.
     readonly property var socket: socketLoader.item
 

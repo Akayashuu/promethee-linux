@@ -11,7 +11,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # --check exits 0 when the build matches the channel, 1 when a newer release is
 # out, and 2 when it could not reach the channel at all. Only the middle case is
-# worth interrupting someone over — a laptop that was asleep, or offline, is not
+# worth interrupting someone over: a laptop that was asleep, or offline, is not
 # news.
 status=0
 report="$("$REPO_DIR/build.sh" --check)" || status=$?

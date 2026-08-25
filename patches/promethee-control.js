@@ -1,5 +1,5 @@
 /**
- * Promethee-linux — control socket.
+ * Promethee-linux: control socket.
  *
  * Everything the app can do lives behind ipcMain handlers, reachable only from
  * its own renderer. A bar widget is not a renderer, so it has no way in.
@@ -7,7 +7,7 @@
  * Rather than hunt for the minified session functions, this shim wraps
  * ipcMain.handle at registration time and keeps a reference to every handler it
  * sees. It is injected at the top of the main bundle, so it is in place before
- * the app registers anything — all ~370 channels end up reachable, and nothing
+ * the app registers anything, so all ~370 channels end up reachable and nothing
  * here depends on an identifier the next upstream build will rename.
  *
  * Those handlers are then served over a Unix socket, newline-delimited JSON:
@@ -70,7 +70,7 @@
 	 * exists to keep a hijacked web page from driving the main process, and it is
 	 * right to. This socket is not that: it is a Unix socket, 0600, in the user's
 	 * own runtime directory, i.e. already inside the trust boundary the guard
-	 * protects. So rather than disable the guard for everyone, answer it — the
+	 * protects. So rather than disable the guard for everyone, answer it with the
 	 * renderer's own file URL, computed the same way the app computes it.
 	 */
 	const rendererUrl = (() => {
@@ -123,7 +123,7 @@
 	async function readSlow() {
 		if (slowCache && Date.now() - slowAt < SLOW_TTL_MS) return slowCache;
 
-		// { "2026-08-23": 125, ... } — minutes per day, most recent last.
+		// { "2026-08-23": 125, ... }: minutes per day, most recent last.
 		const history = await invoke("session:getFocusHistory", [7]).catch(() => null);
 		const days = history?.history ?? {};
 
@@ -363,7 +363,7 @@
 	}
 
 	// On disk rather than on stdout, and written unconditionally: the question it
-	// exists to answer — was the app asked to stop, and did it get to finish? —
+	// exists to answer (was the app asked to stop, and did it get to finish?)
 	// can only be read after the reboot that ended the process being asked.
 	const shutdownLog = (line) => {
 		try {
@@ -376,14 +376,14 @@
 		} catch {}
 	};
 
-	// Chromium picks its password store from XDG_CURRENT_DESKTOP, and on Hyprland
-	// — on any compositor it has not heard of — it recognises nothing and
+	// Chromium picks its password store from XDG_CURRENT_DESKTOP, and on Hyprland,
+	// as on any compositor it has not heard of, it recognises nothing and
 	// safeStorage.isEncryptionAvailable() comes back false. The app takes that at
 	// its word and never writes session.bin at all, so the login lives in memory
 	// and dies with the process: quitting the app logs you out.
 	//
 	// The Secret Service is there, it just has to be named. Set
-	// PROMETHEE_PASSWORD_STORE to override — "basic" for a machine with no
+	// PROMETHEE_PASSWORD_STORE to override: "basic" for a machine with no
 	// keyring, where the alternative is not persisting at all.
 	if (!process.argv.some((arg) => arg.startsWith("--password-store"))) {
 		electron.app.commandLine.appendSwitch(
@@ -403,7 +403,7 @@
 		}`,
 	);
 
-	// Nothing asks a Windows tray app to stop; here everything does — systemd on
+	// Nothing asks a Windows tray app to stop; here everything does: systemd on
 	// logout, the session manager on reboot, a plain `kill`. Being killed
 	// mid-rotation would lose the login for good: the refresh token is rotated on
 	// every use and only reaches disk when the app writes it, so the copy left in
@@ -417,7 +417,7 @@
 		process.on(signal, () => {
 			if (quitting) return;
 			quitting = true;
-			log(`${signal} — quitting`);
+			log(`${signal} received, quitting`);
 			shutdownLog(`${signal} received, quitting`);
 			try {
 				electron.app.quit();

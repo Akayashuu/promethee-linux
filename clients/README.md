@@ -1,7 +1,7 @@
 # Clients
 
 Promethee is a tray app, and the patched build serves everything it can do over
-a Unix socket. Anything that can read a socket — or run a command — can show the
+a Unix socket. Anything that can read a socket, or run a command, can show the
 running session and drive it.
 
 | | |
@@ -10,8 +10,8 @@ running session and drive it.
 | [`promethee-ctl`](promethee-ctl) | The socket from a shell. For bars that run commands, and for looking around by hand |
 
 [docs/protocol.md](../docs/protocol.md) is the contract. It is not specific to
-either of these, and a new client is not a fork of one of them — it is a reader
-of that page.
+either of these, and a new client is not a fork of one of them. It is a reader of
+that page.
 
 ## promethee-ctl
 
@@ -34,7 +34,7 @@ so the two are the same shape with a flag between them:
 ```
 
 `watch` never ends on its own. The app quitting is a line on the stream, not the
-end of it, and the connection is retried until it comes back — a bar that has to
+end of it, and the connection is retried until it comes back. A bar that has to
 be restarted alongside the app is a bar that will be wrong at some point.
 
 Exit status is `0` done, `1` the call failed, `3` Promethee is not running.
@@ -42,7 +42,7 @@ Exit status is `0` done, `1` the call failed, `3` Promethee is not running.
 ## Wiring a bar
 
 The elapsed time of a running session is the client's to compute, from
-`startedAt`, `pausedMs` and `pauseStartedAt` — that is what makes a timer tick
+`startedAt`, `pausedMs` and `pauseStartedAt`, and that is what makes a timer tick
 smoothly rather than step every two seconds. One `jq` expression covers the
 three states a bar has to show:
 
@@ -61,7 +61,7 @@ promethee-ctl watch | jq --unbuffered -c '
 
 Save that as `~/.local/bin/promethee-bar` and it is a module in most bars:
 
-**Waybar** — `custom/promethee`, a module that stays alive and streams:
+**Waybar**: `custom/promethee`, a module that stays alive and streams:
 
 ```jsonc
 "custom/promethee": {
@@ -73,7 +73,7 @@ Save that as `~/.local/bin/promethee-bar` and it is a module in most bars:
 }
 ```
 
-**eww** — `deflisten` is the same idea:
+**eww**: `deflisten` is the same idea:
 
 ```lisp
 (deflisten promethee "~/.local/bin/promethee-bar")
@@ -83,13 +83,13 @@ Save that as `~/.local/bin/promethee-bar` and it is a module in most bars:
           {promethee.text}))
 ```
 
-**polybar** — `type = custom/script` with `tail = true`, formatting to plain text
+**polybar**: `type = custom/script` with `tail = true`, formatting to plain text
 rather than JSON.
 
 Two things worth getting right whichever bar it is:
 
 - Left click should not end a session. Ending is the one action that cannot be
-  undone, so it deserves a deliberate gesture — a middle click, or a long press.
+  undone, so it deserves a deliberate gesture: a middle click, or a long press.
   Starting and pausing are cheap and reversible.
 - `session:end` only writes the session. The recap window, where a session gets
   its message, is a second call to `window:openSessionComplete` with the payload

@@ -12,8 +12,8 @@ import QtQuick.Layouts
  * the popup, which has the room for it.
  *
  * Left click starts, pauses and resumes; a long press ends. Right click
- * opens Promethee's own dashboard. The popup is a tooltip — it closes the
- * moment the pointer leaves the badge — so it cannot hold a button, and
+ * opens Promethee's own dashboard. The popup is a tooltip, closing the
+ * moment the pointer leaves the badge, so it cannot hold a button, and
  * every action has to be a gesture on the badge itself.
  */
 Item {

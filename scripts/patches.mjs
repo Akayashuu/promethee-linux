@@ -2,8 +2,8 @@
  * Patch definitions for Promethee's main-process bundles.
  *
  * The bundles are minified and their identifiers are regenerated on every
- * upstream build, so every anchor matches on structure — the shape of a
- * platform check, the name of a public API method — never on a local name.
+ * upstream build, so every anchor matches on structure (the shape of a platform
+ * check, the name of a public API method) and never on a local name.
  *
  * Each patch is a pure (source) => [source, siteCount] transform so the anchors
  * can be exercised against fixtures without a real bundle. See anchors.test.mjs.
@@ -11,7 +11,7 @@
 
 /** Where a patch should be applied. */
 export const TARGET = {
-	/** The single largest index-*.js — the main-process bundle. */
+	/** The single largest index-*.js, the main-process bundle. */
 	MAIN: "main",
 	/** Every .js in .vite/build. */
 	ALL: "all",

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * promethee-ctl — the control socket from a shell.
+ * promethee-ctl: the control socket from a shell.
  *
  * Bars that speak sockets should speak the socket; this is for the ones that
- * shell out — Waybar, eww, polybar — and for looking around by hand. It is the
+ * shell out (Waybar, eww, polybar) and for looking around by hand. It is the
  * reference implementation of docs/protocol.md, and deliberately depends on
  * nothing: node is already required to build this repository at all.
  *

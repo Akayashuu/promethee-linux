@@ -40,7 +40,7 @@ wires anything twice. It backs up every upstream file it modifies as
 | Hover | Day, week, per-app breakdown, level, streak |
 
 Left click never ends a session. Ending is the one gesture here that cannot be
-undone — the session is written and the timer is gone — so the cheap gesture
+undone, since the session is written and the timer is gone, so the cheap gesture
 does the reversible thing and ending gets a deliberate one. A trackpad has no
 middle button, which is why the long press exists; both routes are gestures you
 cannot make by accident. The badge shrinks while the press is held, so the
@@ -48,16 +48,16 @@ gesture is visible before it fires.
 
 Ending also opens Promethee's session-complete window, the same one the
 app's own UI brings up: the recap where the session gets its message. The
-`session:end` channel only writes the session — the window is a second call
-the renderer makes with the payload the first one returns, and the bar makes
-it too. Without it a session ends silently and the message is lost.
+`session:end` channel only writes the session. The window is a second call the
+renderer makes with the payload the first one returns, and the bar makes it
+too. Without it a session ends silently and the message is lost.
 
 When Promethee is not running, any click launches it.
 
 Right click asks for the window twice: once through the app's own
 `window:showDashboard`, once over the wlr foreign-toplevel protocol. The
 channel alone shows a window that already exists *where it already is*, which
-from another workspace looks like the click did nothing — and a compositor is
+from another workspace looks like the click did nothing, and a compositor is
 right to ignore an app that asks for focus on its own. Activating the toplevel
 from the bar is a direct result of a click, so it is honoured. It is also done
 over the protocol rather than through `hyprctl`, which keeps it working on any
@@ -79,8 +79,8 @@ property JsonObject promethee: JsonObject { // promethee
 ## How it works
 
 The widget talks to Promethee over the control socket, documented in
-[docs/protocol.md](../../docs/protocol.md) — the same contract any other bar
-would be written against, and worth reading before changing anything here.
+[docs/protocol.md](../../docs/protocol.md). That is the same contract any other
+bar would be written against, and worth reading before changing anything here.
 
 `services/Promethee.qml` is the whole client: it holds one connection open,
 reconnects on a timer, and exposes the last state pushed to it as properties the
@@ -89,7 +89,7 @@ timer is live without anything polling; the seconds between pushes are counted
 locally from `startedAt`.
 
 Nothing above the socket is Quickshell-specific. A widget for another bar is a
-different renderer of the same state, not a fork of this one — see
+different renderer of the same state, not a fork of this one. See
 [clients/README.md](../README.md).
 
 ## Files
@@ -104,8 +104,8 @@ different renderer of the same state, not a fork of this one — see
 
 ## Wiring by hand
 
-If `install.sh` cannot find an anchor — upstream moved it — copy the four QML
-files into the matching directories of your config, add the `promethee` block
+If `install.sh` cannot find an anchor, because upstream moved it, copy the four
+QML files into the matching directories of your config, add the `promethee` block
 to `Config.qml`, and add a `Loader` in `BarContent.qml`:
 
 ```qml

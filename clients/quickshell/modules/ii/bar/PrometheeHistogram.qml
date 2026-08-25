@@ -6,7 +6,7 @@ import QtQuick
  *
  * Bars rather than a curve: these are seven discrete daily totals, and a line
  * between them would draw a continuity that does not exist. Today is the last
- * bar and is drawn at full strength — it is the only one still moving.
+ * bar and is drawn at full strength, being the only one still moving.
  */
 Canvas {
     id: root

@@ -376,7 +376,7 @@ StyledPopup {
             textFormat: Text.PlainText
             font.pixelSize: Appearance.font.pixelSize.smaller
             color: Appearance.m3colors.m3error
-            text: Translation.tr("Not signed in — open the dashboard to sign in")
+            text: Translation.tr("Not signed in. Open the dashboard to sign in")
         }
 
         StyledText {

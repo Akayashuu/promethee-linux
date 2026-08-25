@@ -2,8 +2,8 @@
 # Installs the Promethee Quickshell integration into a dots-hyprland ("ii")
 # configuration.
 #
-# The widget files are copied as they are. The three upstream files —
-# Config.qml, BarContent.qml, VerticalBarContent.qml — receive an idempotent
+# The widget files are copied as they are. The three upstream files
+# (Config.qml, BarContent.qml, VerticalBarContent.qml) receive an idempotent
 # addition: the script detects its own marker and applies it only once. A
 # dots-hyprland update overwrites them: run this script again afterwards.
 set -euo pipefail

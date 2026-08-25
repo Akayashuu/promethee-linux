@@ -6,8 +6,8 @@
  *
  * The patch definitions live in patches.mjs; this file only locates the
  * bundles, runs the transforms and writes the result. A required patch that
- * matches nothing aborts before anything is written — a loud failure beats a
- * half-working app.
+ * matches nothing aborts before anything is written, because a loud failure
+ * beats a half-working app.
  */
 
 import fs from "node:fs";
@@ -26,7 +26,7 @@ if (!appDir) {
 
 const buildDir = path.join(appDir, ".vite", "build");
 if (!fs.existsSync(buildDir)) {
-	console.error(`no .vite/build in ${appDir} — is this an extracted app.asar?`);
+	console.error(`no .vite/build in ${appDir}: is this an extracted app.asar?`);
 	process.exit(1);
 }
 
@@ -69,7 +69,7 @@ for (const patch of PATCHES) {
 		if (count > 0 && after !== before) {
 			sources.set(file, after);
 			total += count;
-			console.log(`  ok    ${patch.name} — ${count} site(s) in ${file}`);
+			console.log(`  ok    ${patch.name}: ${count} site(s) in ${file}`);
 		}
 	}
 
@@ -78,15 +78,15 @@ for (const patch of PATCHES) {
 		// when the bundle is simply already patched sends people hunting a bug
 		// that isn't there.
 		const reason = alreadyPatched
-			? "already patched — re-extract app.asar for a clean build"
-			: "no match — upstream layout changed";
+			? "already patched, re-extract app.asar for a clean build"
+			: "no match, upstream layout changed";
 		console.error(`  ${patch.required ? "FAIL " : "warn "} ${patch.name}: ${reason}`);
 		if (patch.required) failed = true;
 	}
 }
 
 if (failed) {
-	console.error("\naborted: a required patch did not apply — nothing written");
+	console.error("\naborted: a required patch did not apply. Nothing written");
 	process.exit(1);
 }
 

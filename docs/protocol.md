@@ -16,14 +16,14 @@ $XDG_RUNTIME_DIR/promethee/control.sock
 ```
 
 Mode 0600, in the user's own runtime directory, and it is a full remote control
-for the app — the same trust boundary as the session bus. Without
+for the app, the same trust boundary as the session bus. Without
 `XDG_RUNTIME_DIR`, the path falls back to `$TMPDIR/run-<uid>/promethee/control.sock`.
 
 The socket exists only while the app runs. It is created once the app is ready,
 and removed on `will-quit`; a stale node left by a crash is unlinked at the next
 start. **A connection refused, or no socket at all, means Promethee is not
-running** — that is the only way to ask, and a client should treat it as a
-state to render rather than an error to report.
+running**. That is the only way to ask, and a client should treat it as a state
+to render rather than an error to report.
 
 ## Framing
 
@@ -61,7 +61,7 @@ That bounds the client's wait; it does not cancel the handler.
 
 ## Events
 
-State is pushed on connect, every two seconds, and again after every call — an
+State is pushed on connect, every two seconds, and again after every call. An
 action almost always moves the state, and a client should not have to wait out
 the interval to see the result of its own call. So a bar renders a live timer
 without polling.
@@ -98,7 +98,7 @@ Pushes only happen while a client is connected. Stay connected and read.
 | `authenticated` | Whether a user profile could be read at all. Everything below is empty when this is `false`. |
 | `profile` | `null` when signed out. |
 | `session` | The open session, or `null` when none is running. |
-| `session.startedAt`, `session.pauseStartedAt` | Epoch ms, normalised — the app's own columns are inconsistent about integers versus ISO strings, so a client never has to guess. `pauseStartedAt` is non-null exactly when the session is paused. |
+| `session.startedAt`, `session.pauseStartedAt` | Epoch ms, normalised: the app's own columns are inconsistent about integers versus ISO strings, so a client never has to guess. `pauseStartedAt` is non-null exactly when the session is paused. |
 | `session.pausedMs` | Total paused time so far, excluding the pause in progress. |
 | `today` | Sessions closed today and their total seconds. |
 | `window` | The focused window, from the active-window shim. Absent if that patch is not installed. |
@@ -109,7 +109,7 @@ Pushes only happen while a client is connected. Stay connected and read.
 Fields are added over time; ignore what you do not recognise.
 
 The elapsed time of a running session is the client's to compute, from
-`startedAt`, `pausedMs` and `pauseStartedAt` — that is what makes a timer tick
+`startedAt`, `pausedMs` and `pauseStartedAt`, and that is what makes a timer tick
 between two pushes instead of stepping every two seconds.
 
 ## Channels served by the socket itself
@@ -131,12 +131,12 @@ want:
 | `window:showDashboard` | Opens the app's own window. |
 
 `session:end` only writes the session. The app's own UI follows it with
-`window:openSessionComplete`, carrying the payload the first call returned — the
+`window:openSessionComplete`, carrying the payload the first call returned. The
 recap is where a session gets its message, and a client that skips it ends
 sessions silently. See `clients/quickshell/services/Promethee.qml` for the pair.
 
 Ask `channels` for the rest. Names are stable across upstream builds in a way
-the minified internals are not, but nothing guarantees them — a client should
+the minified internals are not, but nothing guarantees them, so a client should
 survive `unknown channel`.
 
 ## Writing a client
@@ -147,8 +147,8 @@ Anything that speaks Unix sockets will do:
 printf '{"id":1,"channel":"state"}\n' | socat - UNIX-CONNECT:"$XDG_RUNTIME_DIR/promethee/control.sock"
 ```
 
-For bars that shell out rather than open sockets — Waybar, eww, polybar — use
-the reference client, which does the connecting, framing and reconnection:
+For bars that shell out rather than open sockets (Waybar, eww, polybar), use the
+reference client, which does the connecting, framing and reconnection:
 
 ```bash
 promethee-ctl state                       # one JSON object, then exit

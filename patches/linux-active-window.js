@@ -1,5 +1,5 @@
 /**
- * Promethee-linux — active-window backend for Linux.
+ * Promethee-linux: active-window backend for Linux.
  *
  * Upstream's activeWindow() has branches for win32 (get-windows) and darwin
  * (NSWorkspace) only; everything else returns null, which silently kills the
@@ -159,7 +159,7 @@
 		return path.join(runtime, "hypr", signature, ".socket.sock");
 	}
 
-	/** Talk to Hyprland's IPC socket directly — no process spawn per poll. */
+	/** Talk to Hyprland's IPC socket directly, with no process spawn per poll. */
 	function hyprIPC(command) {
 		return new Promise((resolve) => {
 			const socketPath = hyprSocketPath();

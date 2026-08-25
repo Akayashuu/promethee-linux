@@ -5,7 +5,7 @@
  *   node scripts/anchors.test.mjs
  *
  * Promethee's real bundle can't be committed, so the fixtures reproduce the
- * minified shapes the anchors target — including renamed identifiers, which is
+ * minified shapes the anchors target, including renamed identifiers, which is
  * exactly what changes between upstream builds. If a refactor makes an anchor
  * too strict (or too loose), this catches it without needing a copy of the app.
  */
@@ -141,7 +141,7 @@ test("does not stack a second guard on a patched bundle", () => {
 	assert.equal(twice, once);
 });
 
-test("is not required — upstream may drop the updater", () => {
+test("is not required, upstream may drop the updater", () => {
 	assert.equal(updater.required, false);
 });
 

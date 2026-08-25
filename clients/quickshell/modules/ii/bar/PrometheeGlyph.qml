@@ -8,13 +8,13 @@ import QtQuick.Shapes
 /**
  * The badge, shared by both bars.
  *
- * The mark is drawn on its own, tinted with the state colour — no filled disc
- * behind it. A disc turns a logo into a sticker: it fights the mark's own
+ * The mark is drawn on its own, tinted with the state colour, with no filled
+ * disc behind it. A disc turns a logo into a sticker: it fights the mark's own
  * silhouette and reads as a second, meaningless shape at bar size. The bar's
  * other icons are bare glyphs; this one is too.
  *
  * The ring around it sweeps the current minute. It is not information anyone
- * needs to the second — it is the proof the clock is running, which a static
+ * needs to the second. It is the proof the clock is running, which a static
  * timer cannot give.
  */
 Item {
@@ -67,7 +67,7 @@ Item {
     }
 
     // Promethee's own mark, derived from the installed icon by install.sh.
-    // The logo is not redistributable, so the file is absent until then —
+    // The logo is not redistributable, so the file is absent until then,
     // hence the Material fallback below rather than a hard dependency.
     Image {
         id: mark

@@ -3,8 +3,8 @@
 
     extract-resources.py <package.nupkg> <dest>
 
-A .nupkg is a zip. Everything the Linux build needs — app.asar, the natives
-beside it, the assets — lives under lib/net45/resources/; the rest is Windows
+A .nupkg is a zip. Everything the Linux build needs (app.asar, the natives
+beside it, the assets) lives under lib/net45/resources/; the rest is Windows
 binaries. Only that subtree is written, with the prefix stripped, so <dest>
 ends up shaped exactly like an installed resources/ directory.
 """
@@ -31,7 +31,7 @@ def main() -> int:
             if info.filename.startswith(PREFIX) and not info.is_dir()
         ]
         if not members:
-            print(f"no {PREFIX} in {package.name} — upstream layout changed", file=sys.stderr)
+            print(f"no {PREFIX} in {package.name}: upstream layout changed", file=sys.stderr)
             return 1
 
         for info in members:

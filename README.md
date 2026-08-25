@@ -3,8 +3,8 @@
 Run [Promethee](https://promethee.io) natively on Linux.
 
 Promethee ships for Windows and macOS only. The Electron app itself is
-portable — the missing piece is a Linux backend for the one thing the product
-is built on: knowing which window you're looking at.
+portable. The missing piece is a Linux backend for the one thing the product is
+built on: knowing which window you're looking at.
 
 This repo adds that backend, then builds a native app from Promethee's own
 Windows release. **No Promethee code is redistributed here.**
@@ -27,7 +27,7 @@ Verified on Promethee 1.3.26 / Electron 43.2.0 under Hyprland.
 ## Requirements
 
 - Node ≥ 20, npm, python3, curl
-- A C++ toolchain — `base-devel` (Arch) / `build-essential` (Debian)
+- A C++ toolchain: `base-devel` (Arch) / `build-essential` (Debian)
 - `libsecret`, for keytar
 - A window backend: **Hyprland**, **Sway**, or **X11 + xdotool**
 
@@ -36,9 +36,9 @@ Verified on Promethee 1.3.26 / Electron 43.2.0 under Hyprland.
 | | |
 |---|---|
 | Activity tracking, sessions, quests, XP, leaderboards, HUD | yes |
-| App blocking | no — the blocker is Win32-only |
-| Launch at login | no — Electron reports `unsupported-platform` |
-| Virtual-desktop pinning | no — Windows-only, already guarded upstream |
+| App blocking | no, the blocker is Win32-only |
+| Launch at login | no, Electron reports `unsupported-platform` |
+| Virtual-desktop pinning | no, Windows-only and already guarded upstream |
 
 From the app's own database, tracking a real session:
 
@@ -57,8 +57,8 @@ release channel ──▶ extract ──▶ rebuild natives ──▶ patch ─�
 
 1. Reads Promethee's `RELEASES` manifest for the current build
 2. Downloads that package and checks it against the published SHA-1
-3. Extracts `resources/` — the `.nupkg` is a zip, so nothing has to be unpacked
-   by hand
+3. Extracts `resources/` (the `.nupkg` is a zip, so nothing has to be unpacked
+   by hand)
 4. Rebuilds `better-sqlite3` and `keytar` for this Electron's ABI
 5. Applies the four patches below
 6. Fetches the matching Electron and writes `dist/promethee`
@@ -82,7 +82,7 @@ nothing would otherwise tell you a new Promethee is out:
 ./build.sh --check      # up to date (1.3.26)
 ```
 
-Exit status is the interface — `0` current, `1` a newer release is out, `2` the
+Exit status is the interface: `0` current, `1` a newer release is out, `2` the
 channel was unreachable. `--install` wires that into a daily systemd user timer
 that notifies you when a rebuild is due:
 
@@ -99,10 +99,10 @@ build rather than producing a half-working app.
 
 The bundles are minified and their identifiers change on every upstream build,
 so each patch anchors on a **structural signature** rather than a name. A
-required patch that matches nothing aborts the build — a loud failure beats a
-half-working app.
+required patch that matches nothing aborts the build, because a loud failure
+beats a half-working app.
 
-### 1 — Linux active-window backend
+### 1. Linux active-window backend
 
 Upstream's dispatcher falls through on anything that isn't Windows or macOS:
 
@@ -129,17 +129,17 @@ shape upstream builds from `get-windows`:
 | X11 | `xdotool` | `DISPLAY` |
 
 Window classes are slugs (`code-oss`, `org.gnome.Nautilus`), so the shim indexes
-your `.desktop` entries once and maps class → `Name=` — you get the names your
+your `.desktop` entries once and maps class → `Name=`, so you get the names your
 launcher shows. Executable paths come from `/proc/<pid>/exe`. Results are cached
 for 900 ms so a burst of callers doesn't become a burst of IPC round-trips.
 
-### 2 — Control socket
+### 2. Control socket
 
 The app is tray-first, and everything it can do sits behind an `ipcMain`
 handler reachable from its own renderer only. This patch wraps `ipcMain.handle`
 as those handlers register and serves them over a Unix socket, one JSON object
-per line — enough to drive a focus session from outside the app, and to render
-one in a bar:
+per line. That is enough to drive a focus session from outside the app, and to
+render one in a bar:
 
 ```
 -> {"id":1,"channel":"session:start","args":["Focus"]}
@@ -152,12 +152,12 @@ live timer without polling. The socket is 0600 in the user's own runtime
 directory; it is a full remote control for the app, so treat it as you would the
 session bus. [docs/protocol.md](docs/protocol.md) is the contract.
 
-### 3 — Naming the password store
+### 3. Naming the password store
 
 Without this, the app forgets your login every time it closes.
 
-Chromium picks its password store from `XDG_CURRENT_DESKTOP`. On Hyprland — on
-any compositor it hasn't heard of — it recognises nothing, and
+Chromium picks its password store from `XDG_CURRENT_DESKTOP`. On Hyprland, as
+on any compositor it hasn't heard of, it recognises nothing, and
 `safeStorage.isEncryptionAvailable()` comes back `false`. The app takes that at
 its word:
 
@@ -170,9 +170,9 @@ its word:
 the process, so quitting logs you out and every restart is a fresh install as
 far as auth is concerned. The Secret Service was running the whole time; it
 just has to be named. The shim appends `--password-store=gnome-libsecret`
-unless one was passed on the command line. `PROMETHEE_PASSWORD_STORE`
-overrides it — `basic` for a machine with no keyring, where the alternative is
-not persisting at all.
+unless one was passed on the command line. `PROMETHEE_PASSWORD_STORE` overrides
+it: `basic` for a machine with no keyring, where the alternative is not
+persisting at all.
 
 The shim also writes `linux-shutdown.log` in `userData`: one line per start,
 carrying whether `session.bin` survived and which backend was selected, then
@@ -186,7 +186,7 @@ everything does. The log shows a `SIGTERM` reaching `will-quit` and `exit 0`
 with the shim's own handler never firing: Electron already stops cleanly on a
 signal. That handler stays as a floor under the behaviour, not as a fix for it.
 
-### 4 — Auto-updater off
+### 4. Auto-updater off
 
 `electron-updater`'s Linux path hard-requires an `APPIMAGE` env var and throws
 `ERR_UPDATER_OLD_FILE_NOT_FOUND` without one. There's no Linux release channel
@@ -196,7 +196,7 @@ anyway, so its own `isUpdaterActive()` guard is answered with `false`.
 
 The control socket is the integration point: the focus timer, and starting or
 ending a session, without opening a window. There is a Quickshell widget here
-because that is what this machine runs — nothing about the socket is specific to
+because that is what this machine runs. Nothing about the socket is specific to
 it.
 
 ```bash
@@ -204,7 +204,7 @@ it.
 qs -c ii kill && qs -c ii -d
 ```
 
-For any other bar — Waybar, eww, polybar — `promethee-ctl` puts the socket on
+For any other bar (Waybar, eww, polybar), `promethee-ctl` puts the socket on
 stdout, and `--install` links it into `~/.local/bin`:
 
 ```bash
@@ -249,7 +249,7 @@ clients/quickshell/               bar widget and its installer
 
 Everything in this repository is **MIT**.
 
-Promethee itself is **PolyForm Noncommercial 1.0.0** — personal use is fine,
+Promethee itself is **PolyForm Noncommercial 1.0.0**: personal use is fine,
 redistribution is not. Nothing here ships Promethee: the build fetches the
 official Windows release at build time, on your machine, and leaves the result
 there. Don't publish the output.
