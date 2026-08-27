@@ -34,8 +34,8 @@ for.
 - Node ≥ 20, npm, python3, curl
 - A C++ toolchain: `base-devel` (Arch) / `build-essential` (Debian)
 - `libsecret`, for keytar
-- A window backend: **Hyprland**, **Sway**, or **X11 + xdotool**
-
+- A window backend: **Hyprland**, **Sway**, **KWin (KDE Plasma + kdotool)** or **X11 + xdotool**
+  KDE Wayland: see [docs/kde.md](docs/kde.md).
 ## What works
 
 | | |
