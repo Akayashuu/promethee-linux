@@ -247,6 +247,50 @@
 		});
 	}
 
+	// ---------------------------------------------------------------- KWin (KDE Plasma)
+
+	async function fromKwin() {
+		const desktop = `${process.env.XDG_CURRENT_DESKTOP || ""}:${process.env.KDE_FULL_SESSION || ""}`;
+		if (!/kde|plasma/i.test(desktop) && !process.env.KDE_FULL_SESSION) return null;
+
+		const id = (await run("kdotool", ["getactivewindow"]))?.trim();
+		if (!id) return null;
+
+		const [wmClassRaw, titleRaw, pidRaw, geoRaw] = await Promise.all([
+			run("kdotool", ["getwindowclassname", id]),
+			run("kdotool", ["getwindowname", id]),
+			run("kdotool", ["getwindowpid", id]),
+			run("kdotool", ["getwindowgeometry", id]),
+		]);
+
+		const wmClass = wmClassRaw?.trim() || null;
+		const title = titleRaw?.trim() || null;
+		const pid = Number.parseInt(String(pidRaw || "").trim(), 10);
+
+		let x, y, width, height;
+		const pos = /Position:\s*([-\d.]+)\s*,\s*([-\d.]+)/.exec(geoRaw || "");
+		const size = /Geometry:\s*([\d.]+)\s*x\s*([\d.]+)/.exec(geoRaw || "");
+		if (pos) {
+			x = Number.parseFloat(pos[1]);
+			y = Number.parseFloat(pos[2]);
+		}
+		if (size) {
+			width = Number.parseFloat(size[1]);
+			height = Number.parseFloat(size[2]);
+		}
+
+		return shape("kwin", {
+			wmClass,
+			title,
+			pid: Number.isFinite(pid) ? pid : null,
+			x,
+			y,
+			width,
+			height,
+		});
+	}
+
+
 	// ---------------------------------------------------------------- X11
 
 	async function fromX11() {
@@ -284,7 +328,7 @@
 
 	// ----------------------------------------------------------- dispatch
 
-	const BACKENDS = [fromHyprland, fromSway, fromX11];
+	const BACKENDS = [fromHyprland, fromSway, fromKwin, fromX11];
 
 	// Upstream polls this every few seconds; mirror its own cache window so a
 	// burst of callers doesn't fan out into a burst of IPC round-trips.
