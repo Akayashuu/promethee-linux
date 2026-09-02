@@ -39,10 +39,10 @@ console.log("active-window dispatcher");
 
 const dispatcher = patchByName("linux branch in activeWindow dispatcher");
 
-// Minified exactly as upstream emits it, at 1.3.26.
+// Minified exactly as upstream emits it, at 1.3.28.
 const REAL_SHAPE =
-	'async function Aw(e={}){if(process.platform==="win32")return Iqe(e);' +
-	'if(process.platform!=="darwin")return null;const t=Cqe();if(!t)return null;}';
+	'async function Vw(e={}){if(process.platform==="win32")return EYe(e);' +
+	'if(process.platform!=="darwin")return null;const t=_Ye();if(!t)return null;}';
 
 test("matches the upstream shape", () => {
 	const [out, count] = dispatcher.apply(REAL_SHAPE);
@@ -60,8 +60,8 @@ test("linux branch precedes the darwin fallthrough", () => {
 });
 
 test("survives renamed identifiers", () => {
-	const renamed = REAL_SHAPE.replace(/Aw/g, "Zq9")
-		.replace(/Iqe/g, "b7X")
+	const renamed = REAL_SHAPE.replace(/Vw/g, "Zq9")
+		.replace(/EYe/g, "b7X")
 		.replace(/\be=/g, "n=")
 		.replace(/\(e\)/g, "(n)");
 	const [, count] = dispatcher.apply(renamed);
@@ -199,12 +199,13 @@ console.log("opaque main window");
 
 const opaque = patchByName("opaque main window");
 
-// Minified exactly as upstream emits it, at 1.3.26.
+// Minified exactly as upstream emits it, at 1.3.28.
 const WINDOW_SHAPE =
-	'H=new _.BrowserWindow({width:o,height:i,show:!1,frame:!1,titleBarStyle:"hiddenInset",' +
+	"H=new _.BrowserWindow({width:o,height:i,minWidth:720,minHeight:600,show:!1,frame:!1," +
+	'titleBarStyle:"hiddenInset",trafficLightPosition:{x:13,y:13},' +
 	'...process.platform==="win32"?{transparent:!1,backgroundColor:"#1D1D1D"}:' +
 	'{transparent:!0,vibrancy:"under-window",visualEffectState:"followsWindowActiveState"},' +
-	'appearance:"dark",hasShadow:!0});';
+	'appearance:"dark",hasShadow:!0,movable:!0,skipTaskbar:!1,title:"Promethee"});';
 
 test("matches the upstream shape", () => {
 	const [out, count] = opaque.apply(WINDOW_SHAPE);
