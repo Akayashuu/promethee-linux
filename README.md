@@ -22,7 +22,7 @@ promethee
 channel, verifies it, patches it for Linux and writes `dist/`. First run pulls
 ~400 MiB; later builds reuse it.
 
-Verified on Promethee 1.3.29 / Electron 43.2.0 under Hyprland.
+Verified on Promethee 1.3.29 / Electron 43.2.0 under Hyprland and KDE Plasma.
 
 `--install` also leaves compositor rules for the app's overlay windows beside
 your Hyprland or Sway config. Source them, or the HUD and the panels get tiled
