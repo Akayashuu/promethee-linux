@@ -201,11 +201,13 @@ const opaque = patchByName("opaque main window");
 
 // Minified exactly as upstream emits it, at 1.3.29.
 const WINDOW_SHAPE =
-	"H=new _.BrowserWindow({width:o,height:i,minWidth:720,minHeight:600,show:!1,frame:!1," +
+	"H=new _.BrowserWindow({width:o,height:i,minWidth:720,minHeight:600," +
+	"x:Math.round((n-o)/2),y:Math.round((r-i)/2),show:!1,frame:!1," +
 	'titleBarStyle:"hiddenInset",trafficLightPosition:{x:13,y:13},' +
 	'...process.platform==="win32"?{transparent:!1,backgroundColor:"#1D1D1D"}:' +
 	'{transparent:!0,vibrancy:"under-window",visualEffectState:"followsWindowActiveState"},' +
-	'appearance:"dark",hasShadow:!0,movable:!0,skipTaskbar:!1,title:"Promethee"});';
+	'appearance:"dark",hasShadow:!0,movable:!0,skipTaskbar:!1,title:"Promethee",' +
+	"visibleOnAllWorkspaces:!0});";
 
 test("matches the upstream shape", () => {
 	const [out, count] = opaque.apply(WINDOW_SHAPE);
