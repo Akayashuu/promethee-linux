@@ -3,6 +3,7 @@ import qs.modules.common.widgets
 import qs.services
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
 
 /**
  * Focus session in the horizontal bar.
@@ -136,6 +137,7 @@ Item {
 
         PrometheeWidgetPopup {
             hoverTarget: mouseArea
+            barScreen: root.QsWindow.window?.screen ?? null
         }
     }
 }

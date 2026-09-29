@@ -24,6 +24,7 @@ install -Dm644 "$SRC/modules/ii/bar/PrometheeGlyph.qml" "$QS_DIR/modules/ii/bar/
 install -Dm644 "$SRC/modules/ii/bar/PrometheeHistogram.qml" "$QS_DIR/modules/ii/bar/PrometheeHistogram.qml"
 install -Dm644 "$SRC/modules/ii/bar/PrometheeWidget.qml" "$QS_DIR/modules/ii/bar/PrometheeWidget.qml"
 install -Dm644 "$SRC/modules/ii/bar/PrometheeWidgetPopup.qml" "$QS_DIR/modules/ii/bar/PrometheeWidgetPopup.qml"
+install -Dm644 "$SRC/modules/ii/bar/PrometheeStyle.qml" "$QS_DIR/modules/ii/bar/PrometheeStyle.qml"
 install -Dm644 "$SRC/modules/ii/verticalBar/VerticalPrometheeWidget.qml" "$QS_DIR/modules/ii/verticalBar/VerticalPrometheeWidget.qml"
 echo "Widgets installed."
 
@@ -63,6 +64,14 @@ MARK
     echo "Logo derived: assets/promethee-mark.png"
 else
     echo "Logo not derived (no installed icon, or Pillow missing) - using a Material glyph."
+fi
+
+FONT_SRC="$(find "$SRC/../../dist/app/.vite/renderer" -name 'DMSans-*.ttf' ! -name '*Italic*' 2>/dev/null | head -n 1)"
+if [ -n "$FONT_SRC" ]; then
+    install -Dm644 "$FONT_SRC" "$QS_DIR/assets/fonts/DMSans.ttf"
+    echo "Font copied: assets/fonts/DMSans.ttf"
+else
+    echo "DM Sans not found in the build, so the popup uses the shell font."
 fi
 
 patch_file() {
