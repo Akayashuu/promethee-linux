@@ -186,34 +186,46 @@ say "Promethee $VERSION (electron $ELECTRON_VERSION)"
 
 # ---------------------------------------------------------- native rebuilds
 
-# better-sqlite3 and keytar ship as win32 .node files and have to be rebuilt
+# The SQLite binding and keytar ship as win32 .node files and have to be rebuilt
 # against this Electron's ABI. win-vdesktop and get-windows are left alone,
 # since the bundle already guards both behind a platform check.
 
 say "rebuilding native modules"
+read -r -a NATIVE_MODS <<< "$(node -p "
+	const deps = require('$APP_DIR/package.json').dependencies ?? {};
+	['better-sqlite3-multiple-ciphers', 'better-sqlite3', 'keytar'].filter((name) => name in deps).join(' ')
+")"
+SQLITE_MOD="$(printf '%s\n' "${NATIVE_MODS[@]}" | grep -m1 sqlite)" \
+	|| die "upstream depends on no SQLite binding this script knows how to rebuild"
 BUILD_DIR="$DIST_DIR/.native"
 mkdir -p "$BUILD_DIR"
-cat > "$BUILD_DIR/package.json" <<EOF
-{ "name": "promethee-linux-natives", "version": "1.0.0", "private": true,
-  "dependencies": { "better-sqlite3": "^12.11.1", "keytar": "^7.9.0" } }
-EOF
+APP_DIR="$APP_DIR" node -e '
+	const deps = require(process.env.APP_DIR + "/package.json").dependencies;
+	const wanted = process.argv.slice(1);
+	console.log(JSON.stringify({
+		name: "promethee-linux-natives",
+		version: "1.0.0",
+		private: true,
+		dependencies: Object.fromEntries(wanted.map((name) => [name, deps[name]])),
+	}));
+' "${NATIVE_MODS[@]}" > "$BUILD_DIR/package.json"
 
 (
 	cd "$BUILD_DIR"
 	npm install --no-audit --no-fund --loglevel=error >/dev/null 2>&1 || true
 	# npm >= 11 defers install scripts until approved; prebuilds need them.
-	npm install-scripts approve better-sqlite3 keytar >/dev/null 2>&1 || true
-	npm rebuild better-sqlite3 keytar --loglevel=error >/dev/null 2>&1
+	npm install-scripts approve "${NATIVE_MODS[@]}" >/dev/null 2>&1 || true
+	npm rebuild "${NATIVE_MODS[@]}" --loglevel=error >/dev/null 2>&1
 	# --force, because @electron/rebuild stamps build/Release/.forge-meta with the
 	# ABI it built for and then skips any module whose stamp already matches.
 	# dist/.native is not cleared between builds, so on the second run the stamp is
 	# already there and the rebuild is skipped, leaving whatever `npm rebuild` just
 	# produced against the system Node. The two ABIs are not the same (node 26 is
 	# 147, electron 43 is 148) and the app cannot dlopen the result.
-	npx --yes @electron/rebuild -v "$ELECTRON_VERSION" --force -o better-sqlite3,keytar >/dev/null
+	npx --yes @electron/rebuild -v "$ELECTRON_VERSION" --force -o "$(IFS=,; echo "${NATIVE_MODS[*]}")" >/dev/null
 )
 
-for mod in better-sqlite3 keytar; do
+for mod in "${NATIVE_MODS[@]}"; do
 	# A present directory proves nothing: the compiled addon has to be there.
 	if ! find "$BUILD_DIR/node_modules/$mod" -name '*.node' -print -quit | grep -q .; then
 		die "failed to build $mod: no .node addon produced.
@@ -256,11 +268,15 @@ ELECTRON_BIN="$RUNTIME_DIR/node_modules/electron/dist/electron"
 # the login form, which is a long way from a build step. So load them here, in
 # the binary that will have to.
 say "verifying native modules"
-ELECTRON_RUN_AS_NODE=1 NATIVE_DIR="$APP_DIR/node_modules" "$ELECTRON_BIN" -e '
+while IFS= read -r -d '' addon; do
+	[[ "$(head -c 4 "$addon" | tail -c 3)" == "ELF" ]] \
+		|| die "${addon#"$APP_DIR"/} is still a Windows binary: upstream ships a native module this script does not rebuild."
+done < <(find "$APP_DIR/node_modules" -name '*.node' -not -path '*/win-vdesktop/*' -not -path '*/get-windows/*' -print0)
+ELECTRON_RUN_AS_NODE=1 NATIVE_DIR="$APP_DIR/node_modules" SQLITE_MOD="$SQLITE_MOD" "$ELECTRON_BIN" -e '
 	const path = require("node:path");
 	const dir = process.env.NATIVE_DIR;
 	require(path.join(dir, "keytar"));
-	new (require(path.join(dir, "better-sqlite3")))(":memory:").close();
+	new (require(path.join(dir, process.env.SQLITE_MOD)))(":memory:").close();
 ' || die "native modules do not load under electron $ELECTRON_VERSION.
 Delete $BUILD_DIR and re-run: a stale build cached there is the usual cause."
 
