@@ -64,7 +64,8 @@ release channel ──▶ extract ──▶ rebuild natives ──▶ patch ─�
 2. Downloads that package and checks it against the published SHA-1
 3. Extracts `resources/` (the `.nupkg` is a zip, so nothing has to be unpacked
    by hand)
-4. Rebuilds `better-sqlite3` and `keytar` for this Electron's ABI
+4. Rebuilds the SQLite binding upstream ships (`better-sqlite3-multiple-ciphers`
+   since 1.3.31) and `keytar` for this Electron's ABI
 5. Applies the seven patches below
 6. Fetches the matching Electron and writes `dist/promethee`
 
