@@ -200,7 +200,7 @@ SQLITE_MOD="$(printf '%s\n' "${NATIVE_MODS[@]}" | grep -m1 sqlite)" \
 BUILD_DIR="$DIST_DIR/.native"
 mkdir -p "$BUILD_DIR"
 APP_DIR="$APP_DIR" node -e '
-	const deps = require(`${process.env.APP_DIR}/package.json`).dependencies;
+	const deps = require(process.env.APP_DIR + "/package.json").dependencies;
 	const wanted = process.argv.slice(1);
 	console.log(JSON.stringify({
 		name: "promethee-linux-natives",
