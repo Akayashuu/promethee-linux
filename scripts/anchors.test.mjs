@@ -39,10 +39,10 @@ console.log("active-window dispatcher");
 
 const dispatcher = patchByName("linux branch in activeWindow dispatcher");
 
-// Minified exactly as upstream emits it, at 1.3.31.
+// Minified exactly as upstream emits it, at 1.3.32.
 const REAL_SHAPE =
-	'async function PC(e={}){if(process.platform==="win32")return Mrt(e);' +
-	'if(process.platform!=="darwin")return null;const t=Rrt();if(!t)return null;}';
+	'async function DC(e={}){if(process.platform==="win32")return Lrt(e);' +
+	'if(process.platform!=="darwin")return null;const t=Prt();if(!t)return null;}';
 
 test("matches the upstream shape", () => {
 	const [out, count] = dispatcher.apply(REAL_SHAPE);
@@ -199,7 +199,7 @@ console.log("opaque main window");
 
 const opaque = patchByName("opaque main window");
 
-// Minified exactly as upstream emits it, at 1.3.31.
+// Minified exactly as upstream emits it, at 1.3.32.
 const WINDOW_SHAPE =
 	"q=new _.BrowserWindow({width:c.width,height:c.height,minWidth:720,minHeight:600," +
 	"x:c.x,y:c.y,show:!1,frame:!1," +
