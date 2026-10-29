@@ -22,7 +22,7 @@ promethee
 channel, verifies it, patches it for Linux and writes `dist/`. First run pulls
 ~400 MiB; later builds reuse it.
 
-Verified on Promethee 1.3.33 / Electron 43.7.6 under Hyprland and KDE Plasma.
+Verified on Promethee 1.3.34 / Electron 43.8.3 under Hyprland and KDE Plasma.
 
 `--install` also leaves compositor rules for the app's overlay windows beside
 your Hyprland or Sway config. Source them, or the HUD and the panels get tiled
@@ -85,7 +85,7 @@ The app's own updater is off and its channel wouldn't apply here anyway, so
 nothing would otherwise tell you a new Promethee is out:
 
 ```bash
-./build.sh --check      # up to date (1.3.33)
+./build.sh --check      # up to date (1.3.34)
 ```
 
 Exit status is the interface: `0` current, `1` a newer release is out, `2` the
