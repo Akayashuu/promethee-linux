@@ -1,6 +1,6 @@
 {
 	"name": "promethee-linux",
-	"version": "1.2.5",
+	"version": "1.2.6",
 	"description": "Run Promethee natively on Linux",
 	"private": true,
 	"type": "module",
